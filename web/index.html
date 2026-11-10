@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quantum Optimisation Circuit Builder</title>
+<meta name="description" content="Describe an optimisation problem. Get a stated recommendation with its reasons, a built QAOA circuit, and an exact classical answer to check it against. Runs entirely in your browser.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-row">
+    <div class="brand">qopt&#8209;builder</div>
+    <nav>
+      <a href="#app">Live demo</a>
+      <a href="#how">How it works</a>
+      <a href="#validation">Validation</a>
+      <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Quantum Optimisation Circuit Builder</h1>
+    <p class="lede">Describe an optimisation problem and the builder does three things, in the open: it recommends an algorithm and states its reasons, it builds the QAOA circuit for that recommendation, and it solves the problem exactly so the quantum result has something to be checked against. Everything on this page runs in your browser. The same pipeline ships as a Python package built on Qiskit.</p>
+    <div class="chips">
+      <span class="chip">QUBO and MaxCut intake</span>
+      <span class="chip">Recommendation engine with printed rationales</span>
+      <span class="chip">Exact classical solve up to n = 24</span>
+      <span class="chip">QAOA circuit factory</span>
+      <span class="chip">Refuses rather than truncating over budget</span>
+    </div>
+    <p class="context">Built for the Qiskit Fall Fest 2026 hackathon (DeepStation edition). By Muntaser Syed.</p>
+  </section>
+
+  <section id="app" class="panel app-panel">
+    <div class="app-grid">
+      <div class="controls">
+        <h2>1. Problem</h2>
+        <label class="field-label" for="preset">Preset</label>
+        <select id="preset">
+          <option value="demo">Demo graph: weighted MaxCut, 6 nodes (verified)</option>
+          <option value="sparse">Sparse ring: MaxCut, 10 nodes</option>
+          <option value="moderate">Moderate weighted graph: MaxCut, 8 nodes</option>
+          <option value="dense">Dense symmetric QUBO, 6 variables</option>
+          <option value="custom-edges">Custom MaxCut edge list</option>
+          <option value="custom-qubo">Custom QUBO matrix</option>
+        </select>
+
+        <div id="edges-box">
+          <label class="field-label" for="edges-input">Edges, one per line: i, j, weight</label>
+          <textarea id="edges-input" rows="9" spellcheck="false"></textarea>
+        </div>
+        <div id="qubo-box" hidden>
+          <label class="field-label" for="qubo-input">QUBO matrix Q, one row per line, numbers separated by spaces or commas. Cost is x<sup>T</sup>Qx, minimised.</label>
+          <textarea id="qubo-input" rows="9" spellcheck="false"></textarea>
+        </div>
+
+        <h2>2. Hardware budget (optional)</h2>
+        <label class="field-label" for="budget">Qubit budget. Leave empty for no limit. If n exceeds the budget, the builder refuses instead of silently truncating the circuit.</label>
+        <input id="budget" type="number" min="1" max="64" placeholder="no limit">
+
+        <button id="run" class="run-btn">Run the builder</button>
+        <p id="status" class="status" role="status"></p>
+        <p class="fineprint">Exact solve runs up to n = 24. The in-browser statevector simulation runs up to n = 14; larger problems still get the recommendation and the circuit statistics.</p>
+      </div>
+
+      <div class="results">
+        <div id="graph-card" class="result-card" hidden>
+          <h3>Problem</h3>
+          <div id="graph-svg"></div>
+          <p id="problem-stats" class="stats-line"></p>
+        </div>
+
+        <div id="rec-card" class="result-card" hidden>
+          <h3>Recommendation</h3>
+          <p id="rec-algo" class="rec-algo"></p>
+          <ul id="rec-reasons"></ul>
+        </div>
+
+        <div id="refusal-card" class="result-card refusal" hidden>
+          <h3>Builder refusal</h3>
+          <ul id="refusal-reasons"></ul>
+          <p>No circuit was built. Lower n or raise the budget and run again.</p>
+        </div>
+
+        <div id="exact-card" class="result-card" hidden>
+          <h3>Exact classical solve</h3>
+          <p id="exact-line" class="stats-line"></p>
+        </div>
+
+        <div id="circuit-card" class="result-card" hidden>
+          <h3>QAOA circuit</h3>
+          <p id="circuit-stats" class="stats-line"></p>
+          <div id="circuit-svg" class="circuit-scroll"></div>
+        </div>
+
+        <div id="qaoa-card" class="result-card" hidden>
+          <h3>QAOA run (statevector, in your browser)</h3>
+          <p id="qaoa-line" class="stats-line"></p>
+          <div id="scan-chart"></div>
+          <h4>Most likely measurement outcomes at the refined angles</h4>
+          <table id="top-table">
+            <thead><tr><th>Bitstring (x)</th><th>Probability</th><th>Cost</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="panel">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>Intake</h3>
+        <p>Problems enter as a QUBO: a matrix Q and an offset, minimised over binary variables. MaxCut on a weighted graph converts to this form exactly, with no approximation in the conversion.</p>
+      </div>
+      <div class="step">
+        <h3>Recommendation</h3>
+        <p>A small set of stated rules reads the problem features: size n, coupling density, whether an exact classical answer is cheap, and an optional qubit budget. Every recommendation carries its rationale in plain text, so any choice can be overridden with the reason in view.</p>
+      </div>
+      <div class="step">
+        <h3>Circuit factory</h3>
+        <p>The QUBO is converted to its Ising form and the QAOA circuit is built at the recommended depth p: a phase separator with ZZ rotations for couplings and Z rotations for linear terms, and an X mixer, per layer.</p>
+      </div>
+      <div class="step">
+        <h3>Validation</h3>
+        <p>For n up to 24 the exact optimum is computed by enumeration, so the QAOA expectation and its most likely outcomes are reported next to a certified answer, not next to another heuristic.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="validation" class="panel">
+    <h2>Validation record</h2>
+    <p>The Python implementation (repository, <span class="mono">run_demo.py</span>) was verified end to end on the demo graph used as the first preset on this page:</p>
+    <ul class="record">
+      <li>Recommendation: exact + QAOA, p = 2, with both rationales printed.</li>
+      <li>Brute-force optimum: cost <span class="mono">-8.000</span> (a cut of weight 8 on the 6-node graph).</li>
+      <li>QAOA circuit: 6 qubits, depth 14, 4 free parameters.</li>
+      <li>Best expectation from a 200-point coarse angle scan: <span class="mono">-6.91</span>, against the certified optimum of -8.00.</li>
+    </ul>
+    <p>This page recomputes the same pipeline live. The exact optimum it reports for the demo preset must read -8.000; if it does not, the page is wrong, not the record. The scan value will differ slightly from run to run because the browser scan uses its own random stream, and the page then refines the best scanned angles, which the original demo script does not do.</p>
+  </section>
+
+  <footer>
+    <p>Source: <a href="https://github.com/jemsbhai/qopt-builder">github.com/jemsbhai/qopt-builder</a> (MIT). The browser simulation is a faithful port of the Python package; the repository is the reference implementation.</p>
+  </footer>
+</main>
+
+<script src="qubo.js"></script>
+<script src="qaoa.js"></script>
+<script src="circuit.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

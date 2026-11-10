@@ -16,12 +16,17 @@ Picking a quantum optimisation algorithm is a specialist decision that most pote
 
 Hackathon prototype (v0.1.0). The MaxCut path is complete end to end: `run_demo.py` takes a 6-node graph from intake to a built circuit and scores a coarse angle scan against the brute-force optimum. On the roadmap: a VQE ansatz family in the factory, hardware-aware transpilation targets (coupling map and native gates), problem templates beyond MaxCut (TSP, scheduling, portfolio), and a proper variational optimiser in place of the demo's angle scan.
 
+## Web demo
+
+`web/` is a dependency-free static site that runs the whole pipeline in the browser: problem intake (MaxCut edge lists or a raw QUBO matrix), the recommendation engine with its rationales, the exact solve, the QAOA circuit diagram, and a statevector QAOA run (200-point angle scan plus Nelder-Mead refinement) scored against the certified optimum. The JavaScript is a faithful port of the Python package: on the demo graph it reproduces the recommendation (exact + QAOA, p=2), the optimum (-8.000), and the circuit depth (14) exactly. Run it locally with any static file server, for example `python3 -m http.server --directory web`. The repository root carries a `vercel.json` that deploys `web/` as a static site.
+
 ## Layout
 
 - `qopt_builder/problems.py`: QUBO model, MaxCut conversion, exact solver for small n.
 - `qopt_builder/recommend.py`: the recommendation rules and their rationales.
 - `qopt_builder/build.py`: QAOA circuit construction.
 - `run_demo.py`: the end-to-end MaxCut demo.
+- `web/`: the browser demo (static site; `qubo.js`, `qaoa.js`, `circuit.js`, `app.js`).
 
 ## License
 
