@@ -47,8 +47,80 @@ function runCase(c) {
     out.scan = { p, best: scan.best, trace: Array.from(scan.trace), refined };
     out.scan.success = Q.successProbability(ising, n, p, refined.gammas, refined.betas, out.exact.value);
     out.stepped = stepped(problem, ising, p, c.scan);
+    // a seed of 0 is a seed like any other, not a request for the default one
+    out.seedZero = Array.from(Q.scanAngles(ising, n, 1, 3, 0).trace);
   }
   return out;
+}
+
+/* One input given to the input checks (tests/validation_cases.py): what
+ * came back, or the message of the error. */
+function runCheck(c) {
+  try {
+    return { ok: call(c) };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+function call(c) {
+  if (c.call === "qubo") {
+    const built = "offset" in c ? Q.makeQUBO(c.matrix, c.offset) : Q.makeQUBO(c.matrix);
+    return { matrix: built.matrix, offset: built.offset };
+  }
+  if (c.call === "maxcut") {
+    const built = Q.maxcutQUBO(c.edges, c.n);
+    return { matrix: built.matrix, offset: built.offset };
+  }
+  const problem = Q.makeQUBO(c.matrix);
+  if (c.call === "cost") return Q.cost(problem, c.x);
+  const ising = Q.isingTerms(problem);
+  if (c.call === "circuit") {
+    const stats = Q.circuitStats(problem, ising, c.p);
+    return { depth: stats.depth, gates: stats.total };
+  }
+  if (c.call === "scan") return Q.scanAngles(ising, problem.n, c.p, c.samples, 1).trace.length;
+  throw new Error("unknown call " + c.call);
+}
+
+/* Text as it would be typed into the page, through the page's parsers. */
+function runText(t) {
+  try {
+    return { ok: readText(t) };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+function readText(t) {
+  if (t.kind === "edges") return Q.parseEdgeList(t.text, t.limit);
+  if (t.kind === "matrix") return Q.parseMatrix(t.text, t.limit);
+  if (t.kind === "offset") return Q.parseOffset(t.text);
+  if (t.kind === "budget") return Q.parseBudget(t.text);
+  if (t.kind === "edges-problem") {
+    const parsed = Q.parseEdgeList(t.text, t.limit);
+    const built = Q.maxcutQUBO(parsed.edges, parsed.n);
+    return { matrix: built.matrix, offset: built.offset };
+  }
+  if (t.kind === "matrix-problem") {
+    const built = Q.makeQUBO(Q.parseMatrix(t.text, t.limit), Q.parseOffset(t.offset));
+    return { matrix: built.matrix, offset: built.offset };
+  }
+  if (t.kind === "solver") {
+    const zero = Array.from({ length: t.n }, () => new Array(t.n).fill(0));
+    return Q.exactSolver(Q.makeQUBO(zero)).total;
+  }
+  throw new Error("unknown kind " + t.kind);
+}
+
+/* JSON cannot write NaN or the infinities, so the test spells them out
+ * (to_json in tests/validation_cases.py) and this turns them back. */
+function revive(key, value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const keys = Object.keys(value);
+    if (keys.length === 1 && keys[0] === "$") return { nan: NaN, inf: Infinity, "-inf": -Infinity }[value.$];
+  }
+  return value;
 }
 
 /* The same work done through the resumable objects the guided demo
@@ -80,12 +152,15 @@ let input = "";
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (chunk) => { input += chunk; });
 process.stdin.on("end", () => {
-  const { cases } = JSON.parse(input);
+  const { cases, checks, texts } = JSON.parse(input, revive);
   process.stdout.write(JSON.stringify({
     constants: {
       EXACT_CLASSICAL_LIMIT: Q.EXACT_CLASSICAL_LIMIT,
       TIE_TOLERANCE: Q.TIE_TOLERANCE,
       SIMULATION_LIMIT: Q.SIMULATION_LIMIT,
+      SYMMETRY_TOLERANCE: Q.SYMMETRY_TOLERANCE,
+      ZERO_TOLERANCE: Q.ZERO_TOLERANCE,
+      EXACT_SOLVER_MAX_N: Q.EXACT_SOLVER_MAX_N,
     },
     // the page's preset list, each built into the matrix the page would solve
     presets: Q.PRESETS.map((preset) => {
@@ -96,5 +171,7 @@ process.stdin.on("end", () => {
       };
     }),
     cases: cases.map(runCase),
+    checks: Object.fromEntries(checks.map((c) => [c.name, runCheck(c)])),
+    texts: texts.map(runText),
   }));
 });

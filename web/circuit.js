@@ -8,6 +8,7 @@
   "use strict";
 
   function circuitOps(Q, ising, p) {
+    if (!Number.isInteger(p) || p < 1) throw new Error("QAOA depth p must be a positive whole number.");
     const n = Q.n, { h, J } = ising;
     const ops = [];
     for (let q = 0; q < n; q++) ops.push({ type: "h", qubits: [q], layer: -1, label: "H" });

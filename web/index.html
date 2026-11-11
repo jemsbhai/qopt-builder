@@ -45,11 +45,11 @@
         <p id="preset-about" class="fineprint"></p>
 
         <div id="edges-box">
-          <label class="field-label" for="edges-input">Edges, one per line: i, j, weight</label>
+          <label class="field-label" for="edges-input">Edges, one per line: i, j, weight. Nodes are numbered from 0; the weight is optional and defaults to 1.</label>
           <textarea id="edges-input" rows="9" spellcheck="false"></textarea>
         </div>
         <div id="qubo-box" hidden>
-          <label class="field-label" for="qubo-input">QUBO matrix Q, one row per line, numbers separated by spaces or commas. Cost is x<sup>T</sup>Qx plus the offset, minimised.</label>
+          <label class="field-label" for="qubo-input">QUBO matrix Q, one row per line, numbers separated by spaces or commas. It must be symmetric or triangular. Cost is x<sup>T</sup>Qx plus the offset, minimised.</label>
           <textarea id="qubo-input" rows="9" spellcheck="false"></textarea>
           <label class="field-label" for="offset-input">Constant offset (optional)</label>
           <input id="offset-input" type="number" step="any" placeholder="0">
@@ -57,11 +57,11 @@
 
         <h2>2. Hardware budget (optional)</h2>
         <label class="field-label" for="budget">Qubit budget. Leave empty for no limit. If n exceeds the budget, the builder refuses instead of silently truncating the circuit.</label>
-        <input id="budget" type="number" min="1" max="64" placeholder="no limit">
+        <input id="budget" type="number" min="0" step="1" placeholder="no limit">
 
         <button id="run" class="run-btn">Run the builder</button>
         <p id="status" class="status" role="status"></p>
-        <p class="fineprint">Exact solve runs up to n = 24. The in-browser statevector simulation runs up to n = 14; larger problems still get the recommendation, the certified optimum where n allows, and the circuit.</p>
+        <p class="fineprint">Exact solve runs up to n = 24. The in-browser statevector simulation runs up to n = 14; larger problems still get the recommendation, the certified optimum where n allows, and the circuit. This page takes problems of up to 64 variables.</p>
       </div>
 
       <div class="results">

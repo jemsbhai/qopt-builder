@@ -18,7 +18,7 @@
     },
     "custom-qubo": {
       title: "Custom QUBO matrix",
-      about: "Edit the matrix below. It can be symmetric or upper-triangular.",
+      about: "Edit the matrix below. It must be symmetric, or triangular with each coupling written once.",
     },
   };
 
@@ -63,41 +63,16 @@
 
   presetSel.addEventListener("change", () => applyPreset(presetSel.value));
 
-  function parseEdges(text) {
-    const edges = [];
-    let n = 0;
-    for (const line of text.split("\n")) {
-      const t = line.trim();
-      if (!t) continue;
-      const parts = t.split(/[,\s]+/).filter(Boolean).map(Number);
-      if (parts.length < 2 || parts.some(Number.isNaN)) throw new Error("Bad edge line: " + line);
-      const w = parts.length >= 3 ? parts[2] : 1;
-      edges.push([parts[0], parts[1], w]);
-      n = Math.max(n, parts[0] + 1, parts[1] + 1);
-    }
-    if (!edges.length) throw new Error("No edges given.");
-    return { edges, n };
-  }
+  /* The page draws and lists everything it builds, so it stops at this
+   * many variables. The Python package has no such limit. */
+  const MAX_VARIABLES = 64;
 
-  function parseMatrix(text) {
-    const rows = [];
-    for (const line of text.split("\n")) {
-      const t = line.trim();
-      if (!t) continue;
-      const parts = t.split(/[,\s]+/).filter(Boolean).map(Number);
-      if (parts.some(Number.isNaN)) throw new Error("Bad matrix row: " + line);
-      rows.push(parts);
-    }
-    if (!rows.length) throw new Error("Empty matrix.");
-    return rows;
-  }
-
-  function parseOffset(text) {
-    const t = text.trim();
-    if (!t) return 0;
-    const value = Number(t);
-    if (Number.isNaN(value)) throw new Error("Bad offset: " + text);
-    return value;
+  /* The text in a number box. A browser hands back "" for text it could
+   * not read as a number, so that case is caught through badInput and
+   * reported instead of being taken for an empty box. */
+  function boxText(input, label) {
+    if (input.validity && input.validity.badInput) throw new Error(label + ": that is not a number.");
+    return input.value;
   }
 
   function graphSVG(edges, n, partition) {
@@ -149,6 +124,7 @@
   async function run() {
     const btn = $("run"), status = $("status");
     btn.disabled = true;
+    status.classList.remove("error");
     for (const id of ["graph-card", "rec-card", "refusal-card", "exact-card", "circuit-card", "qaoa-card"]) show(id, false);
     try {
       status.textContent = "Parsing problem...";
@@ -156,16 +132,15 @@
       const mode = currentMode();
       let problem, edges = null;
       if (mode === "edges") {
-        const parsed = parseEdges(edgesInput.value);
+        const parsed = Q.parseEdgeList(edgesInput.value, MAX_VARIABLES);
         edges = parsed.edges;
         problem = Q.maxcutQUBO(edges, parsed.n);
-        problem.name = "maxcut";
       } else {
-        problem = Q.makeQUBO(parseMatrix(quboInput.value), parseOffset(offsetInput.value), "qubo");
+        const rows = Q.parseMatrix(quboInput.value, MAX_VARIABLES);
+        problem = Q.makeQUBO(rows, Q.parseOffset(boxText(offsetInput, "Offset")), "qubo");
       }
       const n = problem.n;
-      const budgetRaw = $("budget").value.trim();
-      const budget = budgetRaw === "" ? null : parseInt(budgetRaw, 10);
+      const budget = Q.parseBudget(boxText($("budget"), "Qubit budget"));
 
       show("graph-card", true);
       if (edges) {
@@ -257,7 +232,8 @@
         status.textContent = "Done (simulation skipped for n > " + Q.SIMULATION_LIMIT + ").";
       }
     } catch (err) {
-      status.textContent = "Error: " + err.message;
+      status.classList.add("error");
+      status.textContent = err.message;
     } finally {
       btn.disabled = false;
     }

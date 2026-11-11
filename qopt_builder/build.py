@@ -13,7 +13,7 @@ import numpy as np
 from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
 
-from .problems import QUBO
+from .problems import QUBO, whole_number
 
 
 def _ising_terms(problem: QUBO) -> tuple[np.ndarray, np.ndarray, float]:
@@ -37,7 +37,14 @@ def _ising_terms(problem: QUBO) -> tuple[np.ndarray, np.ndarray, float]:
 
 
 def build_qaoa(problem: QUBO, p: int) -> tuple[QuantumCircuit, dict]:
-    """Return (parameterised QAOA circuit, ising metadata incl. offset)."""
+    """Return (parameterised QAOA circuit, ising metadata incl. offset).
+
+    p is the number of layers: a positive whole number, or ValueError.
+    """
+    depth = whole_number(p)
+    if depth is None or depth < 1:
+        raise ValueError("QAOA depth p must be a positive whole number.")
+    p = depth
     n = problem.n
     h, J, const = _ising_terms(problem)
     betas = [Parameter(f"b{k}") for k in range(p)]

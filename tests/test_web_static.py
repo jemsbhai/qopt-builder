@@ -60,6 +60,19 @@ def test_deployment_is_a_static_folder():
     assert not os.path.exists(os.path.join(ROOT, "package.json"))
 
 
+def test_pages_read_their_inputs_through_the_tested_parsers():
+    """app.js does no parsing of its own: what is typed into the page goes
+    through the functions that tests/test_web_parity.py pins, and so
+    does the budget box of the guided demo."""
+    app = read("app.js")
+    for call in ("Q.parseEdgeList(", "Q.parseMatrix(", "Q.parseOffset(", "Q.parseBudget("):
+        assert call in app, call
+    for own in ("parseInt", "parseFloat", ".split(", "Number("):
+        assert own not in app, own
+    demo = read("demo.js")
+    assert "Q.parseBudget(" in demo and "parseInt" not in demo
+
+
 def test_guided_demo_uses_the_tested_modules():
     """demo.html loads the same four modules as the main page, the ones
     the parity test runs, and its own script computes no results."""

@@ -989,8 +989,8 @@
   function prepare() {
     const preset = Q.PRESETS.find((entry) => entry.name === $("preset").value) || Q.PRESETS[0];
     const problem = Q.buildPreset(preset);
-    const budgetText = $("budget").value.trim();
-    const budget = budgetText === "" ? null : Math.max(0, parseInt(budgetText, 10) || 0);
+    let budget = null;
+    try { budget = Q.parseBudget($("budget").value); } catch (err) { $("budget").value = ""; } // not a whole number: no budget
     const rec = Q.recommend(problem, budget);
     const ising = Q.isingTerms(problem);
     const S = {

@@ -70,6 +70,10 @@
   }
 
   function runQAOA(ising, n, p, gammas, betas) {
+    if (!Number.isInteger(p) || p < 1) throw new Error("QAOA depth p must be a positive whole number.");
+    if (!gammas || !betas || gammas.length !== p || betas.length !== p) {
+      throw new Error("QAOA at depth p = " + p + " needs " + p + " gammas and " + p + " betas.");
+    }
     const st = newState(n);
     st.re[0] = 1;
     for (let q = 0; q < n; q++) applyH(st, q);
@@ -161,9 +165,11 @@
    * trace as it grows. step(count) scores up to `count` more samples.
    * Each sample draws p gammas and then p betas, uniformly in [0, pi). */
   function angleScan(ising, n, p, samples, seed) {
-    const rng = mulberry32(seed || 20261110);
+    if (!Number.isInteger(p) || p < 1) throw new Error("QAOA depth p must be a positive whole number.");
+    const total = samples === undefined ? 200 : samples;
+    if (!Number.isInteger(total) || total < 1) throw new Error("Number of samples must be a positive whole number.");
+    const rng = mulberry32(seed === undefined ? 20261110 : seed);
     const costs = basisCosts(ising, n);
-    const total = samples || 200;
     let best = { value: Infinity, gammas: null, betas: null };
     const trace = [];
     return {

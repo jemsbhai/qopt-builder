@@ -59,6 +59,17 @@ def list_presets() -> None:
         print(textwrap.fill(preset.about, width=96, initial_indent=indent, subsequent_indent=indent))
 
 
+def qubit_budget(text: str) -> int:
+    """The value of --budget: a whole number of qubits, 0 or more."""
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a whole number") from None
+    if value < 0:
+        raise argparse.ArgumentTypeError("a qubit budget cannot be negative")
+    return value
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(
         description="Recommend, certify, build and score QAOA for a preset problem.",
@@ -68,7 +79,7 @@ def main(argv=None) -> None:
                        help="run one named preset (see --list)")
     which.add_argument("--all", action="store_true", help="run every preset")
     which.add_argument("--list", action="store_true", help="list the presets and exit")
-    parser.add_argument("--budget", type=int, metavar="QUBITS",
+    parser.add_argument("--budget", type=qubit_budget, metavar="QUBITS",
                         help="hardware qubit budget; a problem larger than this is refused")
     args = parser.parse_args(argv)
 

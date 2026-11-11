@@ -48,7 +48,7 @@ The repository root carries a `vercel.json` that deploys `web/` as a static site
 
 ## How it works
 
-1. **Intake** (`qopt_builder/problems.py`): the problem as a QUBO. MaxCut on a weighted graph converts exactly; anything else enters as a QUBO matrix directly. Exact brute-force solve for n up to 24.
+1. **Intake** (`qopt_builder/problems.py`): the problem as a QUBO. MaxCut on a weighted graph converts exactly; anything else enters as a QUBO matrix directly. Input is checked where it enters. A matrix that is empty, is not square, holds something that is not a finite number, or is neither symmetric nor triangular is rejected with a `ValueError` that says what is wrong and where; so is an edge that names a node outside the graph, joins a node to itself, or has a weight that is not a finite number. The browser port makes the same checks in the same words, and its text boxes report the line at fault. Exact brute-force solve for n up to 24.
 2. **Recommend** (`qopt_builder/recommend.py`): stated, conservative rules. Small instances get an exact classical solve that certifies the quantum result, with QAOA built alongside. A problem that exceeds the hardware qubit budget is refused, not truncated. QAOA depth follows coupling density, the fraction of variable pairs with a nonzero coupling (for a graph, its edge density): sparse graphs (density up to 0.15) get p=1, moderate p=2, dense (above 0.5) p=3.
 3. **Build** (`qopt_builder/build.py`): the QAOA circuit for the QUBO via its Ising form, angles left as free parameters.
 

@@ -17,7 +17,7 @@ from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector
 
 from .build import build_qaoa
-from .problems import QUBO
+from .problems import QUBO, whole_number
 
 SCAN_SAMPLES = 200
 SCAN_SEED = 20261110
@@ -43,6 +43,12 @@ def expectation(qc: QuantumCircuit, costs: np.ndarray, values: dict) -> float:
     shares the bit order of the statevector. `values` maps the circuit's
     Parameter objects to numbers.
     """
+    costs = np.asarray(costs, dtype=float)
+    if costs.shape != (2 ** qc.num_qubits,):
+        raise ValueError(
+            f"costs must hold one cost per assignment: {2 ** qc.num_qubits} for a circuit on "
+            f"{qc.num_qubits} qubits, but it has shape {costs.shape}."
+        )
     # strict=False: a cost function with no terms has no gate for gamma to act on
     bound = qc.assign_parameters(values, strict=False)
     probabilities = Statevector.from_instruction(bound).probabilities()
@@ -53,9 +59,15 @@ def scan_angles(problem: QUBO, p: int, samples: int = SCAN_SAMPLES, seed: int = 
     """Score `samples` random angle settings of the depth-p QAOA circuit.
 
     Each sample draws p gammas and then p betas, uniformly in [0, pi),
-    from a generator seeded with `seed`, so a run is reproducible.
+    from a generator seeded with `seed`, so a run is reproducible. p and
+    `samples` are positive whole numbers; anything else raises ValueError.
     """
-    qc, meta = build_qaoa(problem, p)
+    qc, meta = build_qaoa(problem, p)  # checks p
+    p = meta["p"]
+    count = whole_number(samples)
+    if count is None or count < 1:
+        raise ValueError("Number of samples must be a positive whole number.")
+    samples = count
     costs = problem.all_costs()
     rng = np.random.default_rng(seed)
     trace = np.empty(samples)
