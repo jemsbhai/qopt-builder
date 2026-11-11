@@ -1,0 +1,55 @@
+[demo] Demo graph: weighted MaxCut, 6 nodes
+Recommendation: exact+qaoa {'p': 3, 'also_build': 'qaoa'}
+ - n=6 <= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.53 is high: deeper QAOA (p=3) earns its depth on dense graphs.
+Brute-force optimum: -8.000 at x=[0 1 0 0 1 0]
+QAOA circuit: 6 qubits, depth 19, params 6
+Best scanned expectation: -7.308 (optimum -8.000)
+
+[tree-14] Sparse tree: MaxCut, 14 nodes
+Recommendation: exact+qaoa {'p': 1, 'also_build': 'qaoa'}
+ - n=14 <= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.14 is sparse: QAOA p=1 first; depth buys little on near-tree coupling graphs.
+Brute-force optimum: -13.000 at x=[1 0 0 1 1 1 1 0 0 0 0 0 0 0]
+QAOA circuit: 14 qubits, depth 7, params 2
+Best scanned expectation: -9.373 (optimum -13.000)
+
+[ring-10] Ring: MaxCut, 10 nodes
+Recommendation: exact+qaoa {'p': 2, 'also_build': 'qaoa'}
+ - n=10 <= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.22 is moderate: QAOA p=2.
+Brute-force optimum: -10.000 at x=[1 0 1 0 1 0 1 0 1 0]
+QAOA circuit: 10 qubits, depth 14, params 4
+Best scanned expectation: -7.743 (optimum -10.000)
+
+[weighted-8] Dense weighted graph: MaxCut, 8 nodes
+Recommendation: exact+qaoa {'p': 3, 'also_build': 'qaoa'}
+ - n=8 <= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.57 is high: deeper QAOA (p=3) earns its depth on dense graphs.
+Brute-force optimum: -22.000 at x=[0 1 0 1 0 1 0 0]
+QAOA circuit: 8 qubits, depth 25, params 6
+Best scanned expectation: -16.513 (optimum -22.000)
+
+[chorded-ring-24] Chorded ring: MaxCut, 24 nodes
+Recommendation: exact+qaoa {'p': 2, 'also_build': 'qaoa'}
+ - n=24 <= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.17 is moderate: QAOA p=2.
+Brute-force optimum: -36.000 at x=[1 1 0 0 1 1 0 0 1 1 0 0 1 1 0 0 1 1 0 0 1 1 0 0]
+QAOA circuit: 24 qubits, depth 53, params 4
+Best scanned expectation: not simulated (n=24 is above the statevector limit of 14)
+
+[vertex-cover-6] Vertex cover: QUBO, 6 variables
+Recommendation: exact+qaoa {'p': 3, 'also_build': 'qaoa'}
+ - n=6 <= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.53 is high: deeper QAOA (p=3) earns its depth on dense graphs.
+Brute-force optimum: 4.000 at x=[1 1 0 1 1 0]
+QAOA circuit: 6 qubits, depth 22, params 6
+Best scanned expectation: 4.617 (optimum 4.000)
+
+[dense-qubo-6] Dense symmetric QUBO, 6 variables
+Recommendation: exact+qaoa {'p': 3, 'also_build': 'qaoa'}
+ - n=6 <= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 1.00 is high: deeper QAOA (p=3) earns its depth on dense graphs.
+Brute-force optimum: -4.000 at x=[1 0 0 1 0 0]
+QAOA circuit: 6 qubits, depth 27, params 6
+Best scanned expectation: -0.462 (optimum -4.000)

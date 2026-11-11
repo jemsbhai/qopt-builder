@@ -10,9 +10,11 @@ import numpy as np
 import pytest
 
 from qopt_builder import QUBO, maxcut_qubo, problems
+from qopt_builder.presets import DEMO_EDGES
 from qopt_builder.problems import TIE_TOLERANCE
 from reference_impl import all_costs, bits, cut_weight, qubo_cost, reference_minimum
-from run_demo import EDGES, N
+
+EDGES, N = list(DEMO_EDGES), 6
 
 
 def random_qubo(seed: int, n: int, layout: str, integer: bool):
@@ -90,6 +92,27 @@ def test_cost_matches_reference_on_every_assignment(n, layout, integer, seed):
     reference = all_costs(matrix.tolist(), offset)
     for index, expected in enumerate(reference):
         assert problem.cost(bits(index, n)) == pytest.approx(expected, abs=1e-9)
+
+
+@pytest.mark.parametrize("n, layout, integer, seed", CASES[2::9])
+def test_all_costs_matches_reference(n, layout, integer, seed):
+    """The cost vector used to score statevectors: entry k is the cost of
+    assignment number k."""
+    matrix, offset = random_qubo(1000 * n + seed, n, layout, integer)
+    problem = QUBO(matrix, offset=offset)
+    costs = problem.all_costs()
+    assert costs.shape == (1 << n,)
+    assert np.allclose(costs, all_costs(matrix.tolist(), offset), rtol=0, atol=1e-9)
+    value, x = problem.brute_force()
+    assert costs.min() == pytest.approx(value, abs=1e-9)
+    assert costs[sum(int(v) << i for i, v in enumerate(x))] == pytest.approx(value, abs=1e-9)
+
+
+def test_all_costs_stops_where_the_array_would_not_fit():
+    with pytest.raises(ValueError) as error:
+        QUBO(np.zeros((21, 21))).all_costs()
+    assert "n=21" in str(error.value) and "brute_force()" in str(error.value)
+    assert QUBO(np.zeros((20, 20))).all_costs().shape == (1 << 20,)
 
 
 def test_result_types():

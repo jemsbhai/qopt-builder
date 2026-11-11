@@ -13,7 +13,8 @@ const Q = Object.assign(
   {},
   require(path.join(web, "qubo.js")),
   require(path.join(web, "qaoa.js")),
-  require(path.join(web, "circuit.js"))
+  require(path.join(web, "circuit.js")),
+  require(path.join(web, "presets.js"))
 );
 
 function runCase(c) {
@@ -54,7 +55,19 @@ process.stdin.on("data", (chunk) => { input += chunk; });
 process.stdin.on("end", () => {
   const { cases } = JSON.parse(input);
   process.stdout.write(JSON.stringify({
-    constants: { EXACT_CLASSICAL_LIMIT: Q.EXACT_CLASSICAL_LIMIT, TIE_TOLERANCE: Q.TIE_TOLERANCE },
+    constants: {
+      EXACT_CLASSICAL_LIMIT: Q.EXACT_CLASSICAL_LIMIT,
+      TIE_TOLERANCE: Q.TIE_TOLERANCE,
+      SIMULATION_LIMIT: Q.SIMULATION_LIMIT,
+    },
+    // the page's preset list, each built into the matrix the page would solve
+    presets: Q.PRESETS.map((preset) => {
+      const problem = Q.buildPreset(preset);
+      return {
+        name: preset.name, title: preset.title, kind: preset.kind, n: preset.n, about: preset.about,
+        matrix: problem.matrix, offset: problem.offset,
+      };
+    }),
     cases: cases.map(runCase),
   }));
 });

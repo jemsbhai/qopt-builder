@@ -7,9 +7,15 @@ Fall Fest 2026.
 """
 
 from .build import build_qaoa
+from .presets import PRESETS, Preset, get_preset
 from .problems import QUBO, maxcut_qubo
 from .recommend import Recommendation, recommend
+from .simulate import ScanResult, expectation, scan_angles
 
-__all__ = ["QUBO", "maxcut_qubo", "recommend", "Recommendation", "build_qaoa"]
+__all__ = [
+    "QUBO", "maxcut_qubo", "recommend", "Recommendation", "build_qaoa",
+    "expectation", "scan_angles", "ScanResult",
+    "PRESETS", "Preset", "get_preset",
+]
 
 __version__ = "0.1.0"

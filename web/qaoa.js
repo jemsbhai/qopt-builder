@@ -204,7 +204,11 @@
     return { value: vals[bi], gammas: bx.slice(0, p), betas: bx.slice(p) };
   }
 
-  const api = { runQAOA, basisCosts, expectation, topBitstrings, scanAngles, refineAngles };
+  /* Largest n simulated: 2^14 amplitudes per sample. Same value as
+   * SIMULATION_LIMIT in qopt_builder/simulate.py. */
+  const SIMULATION_LIMIT = 14;
+
+  const api = { runQAOA, basisCosts, expectation, topBitstrings, scanAngles, refineAngles, SIMULATION_LIMIT };
   global.QOPT = Object.assign(global.QOPT || {}, api);
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

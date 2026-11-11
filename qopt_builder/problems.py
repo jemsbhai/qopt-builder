@@ -57,6 +57,24 @@ class QUBO:
         coupled = int(np.count_nonzero(np.abs(upper) > 1e-12))
         return coupled / (n * (n - 1) / 2)
 
+    def all_costs(self) -> np.ndarray:
+        """Cost of every assignment, as an array of length 2^n.
+
+        Entry k is the cost of assignment number k, which has x_i = bit i
+        of k. This is also the order of a Qiskit statevector, so the
+        expected cost of a measured state is probabilities @ all_costs().
+        The array is held in memory, so this is for n up to 20; the exact
+        solver, brute_force(), has no such bound.
+        """
+        if self.n > _BLOCK_BITS:
+            raise ValueError(
+                f"all_costs() holds 2^n numbers in memory and stops at n={_BLOCK_BITS}; "
+                f"this problem has n={self.n}. brute_force() works block by block and "
+                "does not have this bound."
+            )
+        diag = np.diag(self.matrix).copy()
+        return _block_costs(diag, self.matrix + self.matrix.T, self.n, self.offset)
+
     def brute_force(self) -> tuple[float, np.ndarray]:
         """Exact optimum by enumerating all 2^n assignments.
 
@@ -79,18 +97,12 @@ class QUBO:
         coupling = self.matrix + self.matrix.T  # coupling[j, k]: coefficient of x_j x_k, j != k
         n_low = min(n, _BLOCK_BITS)
         size = 1 << n_low
-        scratch = np.empty(size)
 
         # low[m]: cost of assignment m when every variable above the block is 0
-        low = np.empty(size)
-        low[0] = self.offset
-        for k in range(n_low):
-            _fill_linear(scratch, diag[k], coupling[:k, k])
-            half = 1 << k
-            np.add(low[:half], scratch[:half], out=low[half:2 * half])
+        low = _block_costs(diag, coupling, n_low, self.offset)
 
         best, best_index = np.inf, 0
-        block = np.empty(size)
+        scratch, block = np.empty(size), np.empty(size)
         for high in range(1 << (n - n_low)):
             if high == 0:
                 costs = low
@@ -111,6 +123,21 @@ class QUBO:
 
         x = np.array([(best_index >> i) & 1 for i in range(n)], dtype=float)
         return self.cost(x), x
+
+
+def _block_costs(diag: np.ndarray, coupling: np.ndarray, n_low: int, offset: float) -> np.ndarray:
+    """Costs of all 2^n_low assignments of the first n_low variables, the
+    rest held at 0. Built by doubling: the half of the array with
+    x_k = 1 is the half with x_k = 0 plus an array of increments."""
+    size = 1 << n_low
+    costs = np.empty(size)
+    costs[0] = offset
+    scratch = np.empty(max(size >> 1, 1))
+    for k in range(n_low):
+        _fill_linear(scratch, diag[k], coupling[:k, k])
+        half = 1 << k
+        np.add(costs[:half], scratch[:half], out=costs[half:2 * half])
+    return costs
 
 
 def _fill_linear(out: np.ndarray, constant: float, weights) -> None:

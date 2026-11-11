@@ -15,8 +15,10 @@ import numpy as np
 import pytest
 
 from qopt_builder import QUBO, maxcut_qubo, recommend
+from qopt_builder.presets import DEMO_EDGES
 from qopt_builder.recommend import EXACT_CLASSICAL_LIMIT, Recommendation
-from run_demo import EDGES, N
+
+EDGES, N = list(DEMO_EDGES), 6
 
 
 def graph(n: int, m: int) -> QUBO:

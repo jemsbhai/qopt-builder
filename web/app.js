@@ -1,56 +1,58 @@
 /* UI wiring for the Quantum Optimisation Circuit Builder demo.
  * All computation comes from qubo.js, qaoa.js and circuit.js, which
- * are ports of the Python package in this repository. */
+ * are ports of the Python package in this repository. The preset
+ * problems come from presets.js. */
 (function () {
   "use strict";
   const Q = window.QOPT;
 
-  const PRESETS = {
-    demo: {
-      mode: "edges",
-      edges: [[0, 1, 1], [0, 2, 1], [1, 2, 1], [1, 3, 2], [2, 4, 1], [3, 4, 1], [3, 5, 1], [4, 5, 2]],
+  const $ = (id) => document.getElementById(id);
+  const presetSel = $("preset"), edgesInput = $("edges-input"), quboInput = $("qubo-input");
+  const offsetInput = $("offset-input"), presetAbout = $("preset-about");
+  const edgesBox = $("edges-box"), quboBox = $("qubo-box");
+
+  const CUSTOM = {
+    "custom-edges": {
+      title: "Custom MaxCut edge list",
+      about: "Edit the edge list below. The number of nodes is one more than the largest index used.",
     },
-    sparse: {
-      mode: "edges",
-      edges: Array.from({ length: 10 }, (_, i) => [i, (i + 1) % 10, 1]),
-    },
-    moderate: {
-      mode: "edges",
-      edges: [[0, 1, 2], [0, 3, 1], [1, 2, 3], [1, 4, 1], [2, 5, 2], [3, 4, 2], [3, 6, 1],
-              [4, 5, 1], [4, 7, 3], [5, 7, 2], [6, 7, 1], [2, 3, 1], [5, 6, 2], [0, 5, 1],
-              [1, 6, 1], [3, 7, 2]],
-    },
-    dense: {
-      mode: "qubo",
-      matrix: [
-        [-2, 1, 2, 0.5, 1, 2],
-        [1, -3, 1, 2, 0.5, 1],
-        [2, 1, -2, 1, 2, 0.5],
-        [0.5, 2, 1, -3, 1, 2],
-        [1, 0.5, 2, 1, -2, 1],
-        [2, 1, 0.5, 2, 1, -3],
-      ],
+    "custom-qubo": {
+      title: "Custom QUBO matrix",
+      about: "Edit the matrix below. It can be symmetric or upper-triangular.",
     },
   };
 
-  const $ = (id) => document.getElementById(id);
-  const presetSel = $("preset"), edgesInput = $("edges-input"), quboInput = $("qubo-input");
-  const edgesBox = $("edges-box"), quboBox = $("qubo-box");
+  function addOption(value, label) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    presetSel.appendChild(option);
+  }
+  for (const preset of Q.PRESETS) addOption(preset.name, preset.title);
+  for (const key of Object.keys(CUSTOM)) addOption(key, CUSTOM[key].title);
 
+  function presetByName(name) { return Q.PRESETS.find((p) => p.name === name) || null; }
   function edgesText(edges) { return edges.map((e) => e.join(", ")).join("\n"); }
   function matrixText(m) { return m.map((r) => r.join(" ")).join("\n"); }
 
+  /* A preset fills the input boxes, which stay editable. The custom
+   * entries keep whatever is in the boxes. */
   function applyPreset(key) {
-    const p = PRESETS[key];
-    if (!p) { syncMode(); return; }
-    if (p.mode === "edges") edgesInput.value = edgesText(p.edges);
-    else quboInput.value = matrixText(p.matrix);
+    const preset = presetByName(key);
+    if (preset && preset.kind === "maxcut") {
+      edgesInput.value = edgesText(preset.edges);
+    } else if (preset) {
+      quboInput.value = matrixText(preset.matrix);
+      offsetInput.value = preset.offset ? String(preset.offset) : "";
+    }
+    presetAbout.textContent = preset ? preset.about : CUSTOM[key].about;
     syncMode();
   }
 
   function currentMode() {
-    const v = presetSel.value;
-    return (v === "dense" || v === "custom-qubo") ? "qubo" : "edges";
+    const preset = presetByName(presetSel.value);
+    if (preset) return preset.kind === "maxcut" ? "edges" : "qubo";
+    return presetSel.value === "custom-qubo" ? "qubo" : "edges";
   }
 
   function syncMode() {
@@ -88,6 +90,14 @@
     }
     if (!rows.length) throw new Error("Empty matrix.");
     return rows;
+  }
+
+  function parseOffset(text) {
+    const t = text.trim();
+    if (!t) return 0;
+    const value = Number(t);
+    if (Number.isNaN(value)) throw new Error("Bad offset: " + text);
+    return value;
   }
 
   function graphSVG(edges, n, partition) {
@@ -151,7 +161,7 @@
         problem = Q.maxcutQUBO(edges, parsed.n);
         problem.name = "maxcut";
       } else {
-        problem = Q.makeQUBO(parseMatrix(quboInput.value), 0, "qubo");
+        problem = Q.makeQUBO(parseMatrix(quboInput.value), parseOffset(offsetInput.value), "qubo");
       }
       const n = problem.n;
       const budgetRaw = $("budget").value.trim();
@@ -166,7 +176,9 @@
       } else {
         $("graph-svg").innerHTML = "";
         $("problem-stats").innerHTML =
-          "QUBO on <b>" + n + "</b> variables. Coupling density <b>" + Q.density(problem).toFixed(3) + "</b>.";
+          "QUBO on <b>" + n + "</b> variables" +
+          (problem.offset ? ", constant offset <b>" + problem.offset + "</b>" : "") +
+          ". Coupling density <b>" + Q.density(problem).toFixed(3) + "</b>.";
       }
 
       status.textContent = "Running the recommendation engine...";
@@ -209,7 +221,7 @@
         "</b> gates (" + counts + "), <b>" + stats.params + "</b> free parameter" + (stats.params === 1 ? "" : "s") + " (" + angleNote + ").";
       $("circuit-svg").innerHTML = Q.renderCircuitSVG(stats.ops, n, Q.schedule(stats.ops, n));
 
-      if (n <= 14) {
+      if (n <= Q.SIMULATION_LIMIT) {
         status.textContent = "Scanning 200 angle samples on the statevector simulator...";
         await tick();
         const scan = Q.scanAngles(ising, n, rec.params.p, 200, 20261110);
@@ -236,10 +248,13 @@
         status.textContent = "Done.";
       } else {
         show("qaoa-card", true);
-        $("qaoa-line").textContent = "n = " + n + " is beyond the in-browser statevector limit of 14, so no QAOA run was simulated here. The Python package runs this circuit on Qiskit Aer or IBM Quantum hardware.";
+        $("qaoa-line").textContent = "n = " + n + " is above the statevector limit of " + Q.SIMULATION_LIMIT +
+          ", so no QAOA run was simulated. The recommendation and the circuit above are complete" +
+          (optimum !== null ? ", and so is the certified optimum" : "") +
+          ". In the Python package the same circuit is a Qiskit QuantumCircuit, ready to be run on a simulator or on hardware.";
         $("scan-chart").innerHTML = "";
         $("top-table").querySelector("tbody").innerHTML = "";
-        status.textContent = "Done (simulation skipped for n > 14).";
+        status.textContent = "Done (simulation skipped for n > " + Q.SIMULATION_LIMIT + ").";
       }
     } catch (err) {
       status.textContent = "Error: " + err.message;

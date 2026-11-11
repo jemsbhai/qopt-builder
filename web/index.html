@@ -39,22 +39,18 @@
       <div class="controls">
         <h2>1. Problem</h2>
         <label class="field-label" for="preset">Preset</label>
-        <select id="preset">
-          <option value="demo">Demo graph: weighted MaxCut, 6 nodes (verified)</option>
-          <option value="sparse">Ring: MaxCut, 10 nodes</option>
-          <option value="moderate">Weighted graph: MaxCut, 8 nodes</option>
-          <option value="dense">Dense symmetric QUBO, 6 variables</option>
-          <option value="custom-edges">Custom MaxCut edge list</option>
-          <option value="custom-qubo">Custom QUBO matrix</option>
-        </select>
+        <select id="preset"></select>
+        <p id="preset-about" class="fineprint"></p>
 
         <div id="edges-box">
           <label class="field-label" for="edges-input">Edges, one per line: i, j, weight</label>
           <textarea id="edges-input" rows="9" spellcheck="false"></textarea>
         </div>
         <div id="qubo-box" hidden>
-          <label class="field-label" for="qubo-input">QUBO matrix Q, one row per line, numbers separated by spaces or commas. Cost is x<sup>T</sup>Qx, minimised.</label>
+          <label class="field-label" for="qubo-input">QUBO matrix Q, one row per line, numbers separated by spaces or commas. Cost is x<sup>T</sup>Qx plus the offset, minimised.</label>
           <textarea id="qubo-input" rows="9" spellcheck="false"></textarea>
+          <label class="field-label" for="offset-input">Constant offset (optional)</label>
+          <input id="offset-input" type="number" step="any" placeholder="0">
         </div>
 
         <h2>2. Hardware budget (optional)</h2>
@@ -63,7 +59,7 @@
 
         <button id="run" class="run-btn">Run the builder</button>
         <p id="status" class="status" role="status"></p>
-        <p class="fineprint">Exact solve runs up to n = 24. The in-browser statevector simulation runs up to n = 14; larger problems still get the recommendation and the circuit statistics.</p>
+        <p class="fineprint">Exact solve runs up to n = 24. The in-browser statevector simulation runs up to n = 14; larger problems still get the recommendation, the certified optimum where n allows, and the circuit.</p>
       </div>
 
       <div class="results">
@@ -152,6 +148,7 @@
 <script src="qubo.js"></script>
 <script src="qaoa.js"></script>
 <script src="circuit.js"></script>
+<script src="presets.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

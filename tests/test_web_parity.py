@@ -1,11 +1,12 @@
 """Web port parity: the JavaScript in web/ against the Python package.
 
 The browser demo is a port of the Python pipeline. These tests run the
-port's own source files (web/qubo.js, web/qaoa.js, web/circuit.js) under
-Node.js, through tests/web_parity.js, on the same problems the Python
-package is given, and compare stage by stage: coupling density, the
-recommendation with its rationale text, the exact solve, the Ising form,
-the circuit structure, and statevector expectations at fixed angles.
+port's own source files (web/qubo.js, web/qaoa.js, web/circuit.js,
+web/presets.js) under Node.js, through tests/web_parity.js, on the same
+problems the Python package is given, and compare stage by stage: the
+preset list, coupling density, the recommendation with its rationale
+text, the exact solve, the Ising form, the circuit structure, and
+statevector expectations at fixed angles.
 
 The angle scan is the one stage that is not shared: the browser draws
 its angles from its own seeded generator. For that stage the test
@@ -25,10 +26,10 @@ from itertools import combinations
 import numpy as np
 import pytest
 
-from qopt_builder import QUBO, build_qaoa, maxcut_qubo, recommend
+from qopt_builder import PRESETS, QUBO, build_qaoa, expectation, maxcut_qubo, recommend
 from qopt_builder.problems import TIE_TOLERANCE
 from qopt_builder.recommend import EXACT_CLASSICAL_LIMIT
-from run_demo import EDGES, N, expectation
+from qopt_builder.simulate import SCAN_SAMPLES, SCAN_SEED, SIMULATION_LIMIT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 NODE = shutil.which("node")
@@ -36,8 +37,6 @@ NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(
     NODE is None, reason="Node.js is not installed; this check runs web/*.js under Node"
 )
-
-SCAN_SAMPLES, SCAN_SEED = 200, 20261110  # what the page uses
 
 
 # ------------------------------------------------------------------ problems
@@ -92,7 +91,16 @@ def make_case(name, problem, *, solve=True, simulate=True, depths=(1, 2, 3), bud
 
 
 def build_cases():
-    cases = [make_case("demo", maxcut_qubo(EDGES, N), scan=True)]
+    # every preset: solved exactly in both ports (the 24-node one included),
+    # simulated where the page simulates, and the demo scanned as the page scans it
+    cases = [
+        make_case(
+            f"preset-{name}", preset.build(), scan=(name == "demo"),
+            simulate=preset.n <= SIMULATION_LIMIT,
+            depths=(1, 2, 3) if preset.n <= SIMULATION_LIMIT else (1, 2),
+        )
+        for name, preset in PRESETS.items()
+    ]
 
     for n in range(1, 9):
         for layout in ("upper", "symmetric"):
@@ -156,7 +164,7 @@ def web():
         payload["cases"].append(spec)
     proc = subprocess.run(
         [NODE, os.path.join(HERE, "web_parity.js")],
-        input=json.dumps(payload), capture_output=True, text=True, timeout=600,
+        input=json.dumps(payload), capture_output=True, text=True, encoding="utf-8", timeout=600,
     )
     assert proc.returncode == 0, proc.stderr
     result = json.loads(proc.stdout)
@@ -169,7 +177,7 @@ def score(problem, p, gammas, betas) -> float:
     qc, meta = build_qaoa(problem, p)
     values = {meta["gammas"][k]: gammas[k] for k in range(p)}
     values.update({meta["betas"][k]: betas[k] for k in range(p)})
-    return expectation(qc, meta["h"], meta["J"], meta["offset"], values)
+    return expectation(qc, problem.all_costs(), values)
 
 
 def mulberry32(seed: int):
@@ -196,7 +204,22 @@ def test_constants_match(web):
     assert web["constants"] == {
         "EXACT_CLASSICAL_LIMIT": EXACT_CLASSICAL_LIMIT,
         "TIE_TOLERANCE": TIE_TOLERANCE,
+        "SIMULATION_LIMIT": SIMULATION_LIMIT,
     }
+
+
+def test_presets_are_the_same_problems(web):
+    """Same names in the same order, same titles and descriptions, and
+    the same matrix and offset once built."""
+    assert [entry["name"] for entry in web["presets"]] == list(PRESETS)
+    for entry in web["presets"]:
+        preset = PRESETS[entry["name"]]
+        problem = preset.build()
+        assert (entry["title"], entry["kind"], entry["n"], entry["about"]) == (
+            preset.title, preset.kind, preset.n, preset.about,
+        )
+        assert entry["matrix"] == problem.matrix.tolist()
+        assert entry["offset"] == problem.offset
 
 
 @pytest.mark.parametrize("name", names())
@@ -257,8 +280,8 @@ def test_expectation_at_fixed_angles(name, web):
 def test_demo_scan_is_reproduced_by_qiskit(web):
     """All 200 scanned values on the page, recomputed with Qiskit at the
     page's own angles."""
-    problem = BY_NAME["demo"]["problem"]
-    scan = web["cases"]["demo"]["scan"]
+    problem = BY_NAME["preset-demo"]["problem"]
+    scan = web["cases"]["preset-demo"]["scan"]
     p = recommend(problem).params["p"]
     assert scan["p"] == p
 
@@ -281,8 +304,8 @@ def test_demo_scan_is_reproduced_by_qiskit(web):
 def test_demo_refinement_is_a_real_expectation(web):
     """The refined value is the Qiskit expectation at the refined angles,
     it improves on the scan, and it does not beat the certified optimum."""
-    problem = BY_NAME["demo"]["problem"]
-    scan = web["cases"]["demo"]["scan"]
+    problem = BY_NAME["preset-demo"]["problem"]
+    scan = web["cases"]["preset-demo"]["scan"]
     refined = scan["refined"]
     optimum, _ = problem.brute_force()
     assert refined["value"] == pytest.approx(
@@ -293,7 +316,7 @@ def test_demo_refinement_is_a_real_expectation(web):
 
 def test_web_demo_record(web):
     """The numbers the page shows for the demo preset, as in the README."""
-    entry = web["cases"]["demo"]
+    entry = web["cases"]["preset-demo"]
     assert entry["exact"] == {"value": -8.0, "x": [0, 1, 0, 0, 1, 0]}
     assert entry["circuits"]["3"] == {
         "qubits": 6, "depth": 19, "total": 48, "counts": {"h": 6, "rzz": 24, "rx": 18}, "params": 6,

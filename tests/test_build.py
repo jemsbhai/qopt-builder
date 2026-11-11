@@ -11,9 +11,11 @@ import numpy as np
 import pytest
 from qiskit.quantum_info import Statevector
 
-from qopt_builder import QUBO, build_qaoa, maxcut_qubo
+from qopt_builder import QUBO, build_qaoa, expectation, maxcut_qubo
+from qopt_builder.presets import DEMO_EDGES
 from reference_impl import all_costs, qaoa_probabilities
-from run_demo import EDGES, N, expectation
+
+EDGES, N = list(DEMO_EDGES), 6
 
 PROBLEMS = {
     "demo-maxcut-6": maxcut_qubo(EDGES, N),
@@ -105,7 +107,7 @@ def test_cost_function_without_terms(p):
     gammas, betas = angles(5, p)
     values = {meta["gammas"][k]: gammas[k] for k in range(p)}
     values.update({meta["betas"][k]: betas[k] for k in range(p)})
-    assert expectation(qc, meta["h"], meta["J"], meta["offset"], values) == pytest.approx(2.5, abs=1e-12)
+    assert expectation(qc, problem.all_costs(), values) == pytest.approx(2.5, abs=1e-12)
 
 
 def test_maxcut_has_no_linear_terms():
@@ -174,19 +176,3 @@ def test_zero_angles_leave_the_uniform_superposition(name):
     gammas, betas = angles(7, 2)
     for g, b in ((np.zeros(2), betas), (gammas, np.zeros(2))):
         assert np.allclose(probabilities(problem, 2, g, b), 1.0 / size, atol=1e-12)
-
-
-@pytest.mark.parametrize("name", NAMES)
-def test_demo_scoring_agrees_with_the_cost_function(name):
-    """run_demo.expectation scores a state through the Ising form; it
-    must equal the same state scored with the QUBO cost directly."""
-    problem = PROBLEMS[name]
-    costs = np.array(all_costs(problem.matrix.tolist(), problem.offset))
-    for p in (1, 2, 3):
-        qc, meta = build_qaoa(problem, p)
-        gammas, betas = angles(1000 + p, p)
-        values = {meta["gammas"][k]: gammas[k] for k in range(p)}
-        values.update({meta["betas"][k]: betas[k] for k in range(p)})
-        via_ising = expectation(qc, meta["h"], meta["J"], meta["offset"], values)
-        direct = float(probabilities(problem, p, gammas, betas) @ costs)
-        assert via_ising == pytest.approx(direct, abs=1e-9)
