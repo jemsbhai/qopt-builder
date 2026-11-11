@@ -41,8 +41,8 @@
         <label class="field-label" for="preset">Preset</label>
         <select id="preset">
           <option value="demo">Demo graph: weighted MaxCut, 6 nodes (verified)</option>
-          <option value="sparse">Sparse ring: MaxCut, 10 nodes</option>
-          <option value="moderate">Moderate weighted graph: MaxCut, 8 nodes</option>
+          <option value="sparse">Ring: MaxCut, 10 nodes</option>
+          <option value="moderate">Weighted graph: MaxCut, 8 nodes</option>
           <option value="dense">Dense symmetric QUBO, 6 variables</option>
           <option value="custom-edges">Custom MaxCut edge list</option>
           <option value="custom-qubo">Custom QUBO matrix</option>
@@ -136,12 +136,12 @@
     <h2>Validation record</h2>
     <p>The Python implementation (repository, <span class="mono">run_demo.py</span>) was verified end to end on the demo graph used as the first preset on this page:</p>
     <ul class="record">
-      <li>Recommendation: exact + QAOA, p = 2, with both rationales printed.</li>
+      <li>Recommendation: exact + QAOA, p = 3, with both rationales printed.</li>
       <li>Brute-force optimum: cost <span class="mono">-8.000</span> (a cut of weight 8 on the 6-node graph).</li>
-      <li>QAOA circuit: 6 qubits, depth 14, 4 free parameters.</li>
-      <li>Best expectation from a 200-point coarse angle scan: <span class="mono">-6.91</span>, against the certified optimum of -8.00.</li>
+      <li>QAOA circuit: 6 qubits, depth 19, 6 free parameters.</li>
+      <li>Best expectation from a 200-point coarse angle scan: <span class="mono">-7.31</span>, against the certified optimum of -8.00.</li>
     </ul>
-    <p>This page recomputes the same pipeline live. The exact optimum it reports for the demo preset must read -8.000; if it does not, the page is wrong, not the record. The scan value will differ slightly from run to run because the browser scan uses its own random stream, and the page then refines the best scanned angles, which the original demo script does not do.</p>
+    <p>This page recomputes the same pipeline live. The exact optimum it reports for the demo preset must read -8.000; if it does not, the page is wrong, not the record. The scan value on this page differs from the Python one because the browser draws its scan angles from its own seeded random stream; it is the same on every visit. The page then refines the best scanned angles, which the demo script does not do.</p>
   </section>
 
   <footer>

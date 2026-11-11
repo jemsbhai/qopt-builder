@@ -16,12 +16,12 @@ Every number here is reproduced by `run_demo.py` and pinned by `tests/test_demo.
 
 | Check | Result |
 |---|---|
-| Recommendation | exact + QAOA, p=2, both rationales printed |
-| Coupling density | 0.27 (moderate band, hence p=2) |
+| Recommendation | exact + QAOA, p=3, both rationales printed |
+| Coupling density | 0.53: 8 of the 15 node pairs are coupled (high band, hence p=3) |
 | Brute-force optimum | -8.000 at x = [0 1 0 0 1 0] |
-| QAOA circuit | 6 qubits, depth 14, 4 free parameters |
-| Python demo scan (200 angles) | best expectation -6.909 against the -8.000 optimum |
-| Browser demo | scan -6.91, Nelder-Mead refinement -7.412 |
+| QAOA circuit | 6 qubits, depth 19, 6 free parameters |
+| Python demo scan (200 angles) | best expectation -7.308 against the -8.000 optimum |
+| Browser demo | scan -6.664, Nelder-Mead refinement -7.187 |
 | Qubit budget set below n | recommendation "none": refusal, no circuit built |
 
 ## Run it
@@ -31,7 +31,7 @@ Python package (Qiskit, Aer, NumPy; see `requirements.txt`):
 ```bash
 pip install -r requirements.txt
 python run_demo.py        # intake -> recommendation -> circuit -> scored scan
-python tests/test_demo.py # pins the table above; prints "4 passed"
+python tests/test_demo.py # pins the table above; prints "7 passed"
 ```
 
 Browser demo locally, with any static file server:
@@ -45,7 +45,7 @@ The repository root carries a `vercel.json` that deploys `web/` as a static site
 ## How it works
 
 1. **Intake** (`qopt_builder/problems.py`): the problem as a QUBO. MaxCut on a weighted graph converts exactly; anything else enters as a QUBO matrix directly. Exact brute-force solve for n up to 24.
-2. **Recommend** (`qopt_builder/recommend.py`): stated, conservative rules. Small instances get an exact classical solve that certifies the quantum result, with QAOA built alongside. A problem that exceeds the hardware qubit budget is refused, not truncated. QAOA depth follows coupling density: sparse graphs (density up to 0.15) get p=1, moderate p=2, dense (above 0.5) p=3.
+2. **Recommend** (`qopt_builder/recommend.py`): stated, conservative rules. Small instances get an exact classical solve that certifies the quantum result, with QAOA built alongside. A problem that exceeds the hardware qubit budget is refused, not truncated. QAOA depth follows coupling density, the fraction of variable pairs with a nonzero coupling (for a graph, its edge density): sparse graphs (density up to 0.15) get p=1, moderate p=2, dense (above 0.5) p=3.
 3. **Build** (`qopt_builder/build.py`): the QAOA circuit for the QUBO via its Ising form, angles left as free parameters.
 
 ## Status

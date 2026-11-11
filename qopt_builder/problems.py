@@ -1,12 +1,14 @@
 """Problem intake: optimisation problems as QUBO / Ising models.
 
-A problem is a symmetric matrix Q (upper-triangular convention) plus a
-constant offset, minimised over binary variables x in {0,1}^n:
+A problem is a square matrix Q plus a constant offset, minimised over
+binary variables x in {0,1}^n:
 
-    cost(x) = sum_{i<=j} Q[i,j] x_i x_j + offset
+    cost(x) = x^T Q x + offset
 
-MaxCut on a weighted graph converts to this form exactly; other
-problems enter by supplying Q directly.
+Q may be stored symmetric or upper-triangular. Either way the coupling
+between x_i and x_j is Q[i,j] + Q[j,i], and the diagonal carries the
+linear terms (x_i^2 = x_i). MaxCut on a weighted graph converts to this
+form exactly; other problems enter by supplying Q directly.
 """
 
 from __future__ import annotations
@@ -32,12 +34,21 @@ class QUBO:
         return float(x @ self.matrix @ x) + self.offset
 
     def density(self) -> float:
-        """Fraction of nonzero off-diagonal couplings."""
+        """Fraction of variable pairs {i, j} that are coupled.
+
+        A pair is coupled when Q[i,j] + Q[j,i] is nonzero, so a symmetric
+        layout and an upper-triangular layout of the same cost function
+        report the same value. For a graph with m edges this is the usual
+        edge density m / (n (n - 1) / 2): 0 with no edges, 1 for a
+        complete graph.
+        """
         n = self.n
         if n < 2:
             return 0.0
-        off = self.matrix - np.diag(np.diag(self.matrix))
-        return float(np.count_nonzero(np.abs(off) > 1e-12) / (n * (n - 1)))
+        folded = self.matrix + self.matrix.T
+        upper = folded[np.triu_indices(n, k=1)]
+        coupled = int(np.count_nonzero(np.abs(upper) > 1e-12))
+        return coupled / (n * (n - 1) / 2)
 
     def brute_force(self) -> tuple[float, np.ndarray]:
         """Exact optimum by enumeration. Feasible only for small n."""

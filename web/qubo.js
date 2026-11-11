@@ -26,14 +26,19 @@
     return c;
   }
 
+  /* Fraction of variable pairs {i, j} that are coupled. A pair is
+   * coupled when Q[i][j] + Q[j][i] is nonzero, so a symmetric layout and
+   * an upper-triangular layout of the same cost function report the same
+   * value. For a graph with m edges this is the usual edge density
+   * m / (n (n - 1) / 2). Mirrors QUBO.density() in problems.py. */
   function density(Q) {
     const n = Q.n;
     if (n < 2) return 0;
-    let nz = 0;
+    let coupled = 0;
     for (let i = 0; i < n; i++)
-      for (let j = 0; j < n; j++)
-        if (i !== j && Math.abs(Q.matrix[i][j]) > 1e-12) nz++;
-    return nz / (n * (n - 1));
+      for (let j = i + 1; j < n; j++)
+        if (Math.abs(Q.matrix[i][j] + Q.matrix[j][i]) > 1e-12) coupled++;
+    return coupled / (n * (n - 1) / 2);
   }
 
   /* Exact optimum by Gray-code enumeration: flipping one bit at a
@@ -92,6 +97,24 @@
     return { h, J, offset: const_ };
   }
 
+  /* Fixed-point text that matches Python's format(x, ".{digits}f").
+   * toFixed rounds an exact tie away from zero; Python rounds it to the
+   * even digit. A double is an exact tie at `digits` decimals only when
+   * it is an odd multiple of 2^-(digits+1), so that is the case handled
+   * here. Example: a density of 0.125 prints as 0.12, as it does in the
+   * Python rationale, where toFixed alone would print 0.13. */
+  function fixed(x, digits) {
+    if (Object.is(x, -0)) return "-" + (0).toFixed(digits); // Python keeps the sign of -0.0
+    const a = Math.abs(x);
+    const scaled = a * Math.pow(2, digits + 1);
+    if (Number.isInteger(scaled) && scaled % 2 === 1) {
+      const lower = Math.floor(a * Math.pow(10, digits));
+      const even = lower % 2 === 0 ? lower : lower + 1;
+      return (x < 0 ? "-" : "") + (even / Math.pow(10, digits)).toFixed(digits);
+    }
+    return x.toFixed(digits);
+  }
+
   const EXACT_CLASSICAL_LIMIT = 24;
 
   function recommend(Q, qubitBudget) {
@@ -117,19 +140,19 @@
     let p;
     if (d > 0.5) {
       p = 3;
-      reasons.push("coupling density " + d.toFixed(2) + " is high: deeper QAOA (p=" + p + ") earns its depth on dense graphs.");
+      reasons.push("coupling density " + fixed(d, 2) + " is high: deeper QAOA (p=" + p + ") earns its depth on dense graphs.");
     } else if (d > 0.15) {
       p = 2;
-      reasons.push("coupling density " + d.toFixed(2) + " is moderate: QAOA p=" + p + ".");
+      reasons.push("coupling density " + fixed(d, 2) + " is moderate: QAOA p=" + p + ".");
     } else {
       p = 1;
-      reasons.push("coupling density " + d.toFixed(2) + " is sparse: QAOA p=" + p + " first; depth buys little on near-tree coupling graphs.");
+      reasons.push("coupling density " + fixed(d, 2) + " is sparse: QAOA p=" + p + " first; depth buys little on near-tree coupling graphs.");
     }
     if (base === "exact") return { algorithm: "exact+qaoa", params: { p, also_build: "qaoa" }, rationale: reasons };
     return { algorithm: "qaoa", params: { p }, rationale: reasons };
   }
 
-  const api = { makeQUBO, cost, density, bruteForce, maxcutQUBO, isingTerms, recommend, EXACT_CLASSICAL_LIMIT };
+  const api = { makeQUBO, cost, density, bruteForce, maxcutQUBO, isingTerms, recommend, fixed, EXACT_CLASSICAL_LIMIT };
   global.QOPT = Object.assign(global.QOPT || {}, api);
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
