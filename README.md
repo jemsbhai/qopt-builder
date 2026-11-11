@@ -8,6 +8,8 @@ Built by Muntaser Syed for the DeepStation edition of Qiskit Fall Fest 2026.
 
 **https://qopt-builder.vercel.app/**
 
+Guided demo, an animated walkthrough made for watching or recording: **https://qopt-builder.vercel.app/demo.html**. It plays the pipeline on one screen: the recommendation and its reasons, the exact solve, the QAOA circuit assembled gate by gate, with each coupling in the problem flying to the RZZ gate that encodes it, and the run scored against the certified optimum. To record it, open `demo.html?controls=0`, start the screen recorder and press Space: the page waits on the title card until then, and nothing but the demo is on screen. `?autoplay=1` starts on load instead. `&preset=NAME` chooses the problem (names from `python run_demo.py --list`), `&budget=4` shows a refusal, and `&speed=0.5` or `&speed=2` changes the pace. Keys: Space pauses and resumes, Right arrow skips to the end of the current stage, R restarts, H shows or hides the controls, C shows or hides the captions.
+
 The full pipeline runs in the browser: problem intake (MaxCut edge lists or a raw QUBO matrix, plus presets), the recommendation engine with its rationales, the exact solve, the QAOA circuit diagram with gate counts and depth, and a statevector QAOA run (200-point angle scan plus Nelder-Mead refinement) scored against the certified optimum. The JavaScript in `web/` is a dependency-free port of the Python package below.
 
 ## Verified results (demo graph, 6 nodes, 8 weighted edges)

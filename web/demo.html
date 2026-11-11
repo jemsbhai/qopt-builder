@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guided demo: Quantum Optimisation Circuit Builder</title>
+<meta name="description" content="Watch an optimisation problem become a recommended, certified QAOA circuit: the recommendation and its reasons, the exact classical solve, the circuit assembled gate by gate, and the run scored against the certified optimum.">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+<div id="viewport">
+  <div id="scaled">
+    <main id="stage">
+      <header class="top">
+        <div class="brand">qopt&#8209;builder</div>
+        <div class="title">Quantum Optimisation Circuit Builder</div>
+        <ol class="stages" id="stages">
+          <li data-stage="problem">Problem</li>
+          <li data-stage="recommend">Recommend</li>
+          <li data-stage="certify">Certify</li>
+          <li data-stage="build">Build</li>
+          <li data-stage="run">Run</li>
+        </ol>
+      </header>
+
+      <section class="panel idle" id="p-problem">
+        <h2>Problem</h2>
+        <p class="lead" id="problem-title"></p>
+        <div class="body">
+          <svg id="graph" viewBox="0 0 392 200" role="img" aria-label="The problem as a graph of coupled variables"></svg>
+          <p id="problem-facts"></p>
+        </div>
+      </section>
+
+      <section class="panel idle" id="p-rec">
+        <h2>Recommendation</h2>
+        <div class="body">
+          <div class="gauge" id="g-size">
+            <div class="name">Size</div>
+            <div class="track"><div class="tick" data-tick="limit"><span>exact limit 24</span></div><div class="marker"></div></div>
+            <div class="value"></div>
+          </div>
+          <div class="gauge" id="g-density">
+            <div class="name">Coupling density</div>
+            <div class="track">
+              <div class="band" data-band="1" style="left:0;width:15%;background:var(--accent)"></div>
+              <div class="band" data-band="2" style="left:15%;width:35%;background:var(--warn)"></div>
+              <div class="band" data-band="3" style="left:50%;width:50%;background:var(--violet)"></div>
+              <div class="band-name" style="left:7.5%;color:var(--accent)">p = 1</div>
+              <div class="band-name" style="left:32.5%;color:var(--warn)">p = 2</div>
+              <div class="band-name" style="left:75%;color:var(--violet)">p = 3</div>
+              <div class="tick" style="left:15%"><span>0.15</span></div>
+              <div class="tick" style="left:50%"><span>0.5</span></div>
+              <div class="marker"></div>
+            </div>
+            <div class="value"></div>
+          </div>
+          <div class="gauge off" id="g-budget">
+            <div class="name">Qubit budget</div>
+            <div class="track"><div class="tick" data-tick="budget"><span></span></div><div class="marker"></div></div>
+            <div class="value">none set</div>
+          </div>
+          <div id="decision">
+            <div class="algo"></div>
+            <ul></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel idle" id="p-exact">
+        <h2>Exact classical solve</h2>
+        <p class="lead" id="exact-lead"></p>
+        <div class="body">
+          <svg id="landscape" viewBox="0 0 542 150" role="img" aria-label="Cost of every assignment"></svg>
+          <div id="exact-readout"><span class="big"></span><span class="x"></span></div>
+          <p id="exact-note"></p>
+        </div>
+      </section>
+
+      <section class="panel idle" id="p-circuit">
+        <div class="circuit-head">
+          <h2>QAOA circuit</h2>
+          <div id="angles"></div>
+          <div class="counters">
+            <span>qubits<b id="c-qubits">0</b></span>
+            <span>gates<b id="c-gates">0</b></span>
+            <span>depth<b id="c-depth">0</b></span>
+            <span>free parameters<b id="c-params">0</b></span>
+          </div>
+        </div>
+        <div class="body">
+          <svg id="circuit" viewBox="0 0 1540 204" role="img" aria-label="The QAOA circuit"></svg>
+          <p id="legend"></p>
+        </div>
+      </section>
+
+      <div class="run-row">
+        <section class="panel idle" id="p-scan">
+          <h2>Angle scan and refinement</h2>
+          <div class="body"><svg id="scan" viewBox="0 0 582 124" role="img" aria-label="Expected cost over the scan and the refinement"></svg></div>
+        </section>
+        <section class="panel idle" id="p-dist">
+          <h2>Most likely measurements</h2>
+          <div class="body"><svg id="dist" viewBox="0 0 532 124" role="img" aria-label="Probability of the most likely measurement outcomes"></svg></div>
+        </section>
+        <section class="panel idle" id="p-result">
+          <h2>Result</h2>
+          <div class="body">
+            <dl id="result-list">
+              <dt>Certified optimum</dt><dd id="r-opt"></dd>
+              <dt>QAOA, best of the scan</dt><dd id="r-scan"></dd>
+              <dt>QAOA, after refinement</dt><dd id="r-refined"></dd>
+              <dt>Gap to the optimum</dt><dd id="r-gap"></dd>
+              <dt>Chance of measuring an optimum</dt><dd id="r-success"></dd>
+            </dl>
+          </div>
+        </section>
+      </div>
+
+      <footer class="bottom">
+        <p id="caption" role="status"></p>
+        <div id="controls">
+          <button id="play" type="button">Play</button>
+          <button id="next" type="button" title="Skip to the end of this stage">Next stage</button>
+          <button id="restart" type="button">Restart</button>
+          <label>Speed
+            <select id="speed">
+              <option value="0.5">0.5x</option>
+              <option value="1" selected>1x</option>
+              <option value="2">2x</option>
+            </select>
+          </label>
+          <label>Problem <select id="preset"></select></label>
+          <label>Qubit budget <input id="budget" type="number" min="0" placeholder="none"></label>
+        </div>
+      </footer>
+
+      <svg id="overlay" viewBox="0 0 1600 900" aria-hidden="true"></svg>
+      <div class="card" id="card"></div>
+    </main>
+  </div>
+</div>
+
+<script src="qubo.js"></script>
+<script src="qaoa.js"></script>
+<script src="circuit.js"></script>
+<script src="presets.js"></script>
+<script src="demo.js"></script>
+</body>
+</html>
