@@ -45,8 +45,35 @@ function runCase(c) {
     const scan = Q.scanAngles(ising, n, p, c.scan.samples, c.scan.seed);
     const refined = Q.refineAngles(ising, n, p, scan.best, scan.costs);
     out.scan = { p, best: scan.best, trace: Array.from(scan.trace), refined };
+    out.scan.success = Q.successProbability(ising, n, p, refined.gammas, refined.betas, out.exact.value);
+    out.stepped = stepped(problem, ising, p, c.scan);
   }
   return out;
+}
+
+/* The same work done through the resumable objects the guided demo
+ * uses, in uneven slices. It has to land on the same numbers. */
+function stepped(problem, ising, p, options) {
+  const n = problem.n;
+  const solver = Q.exactSolver(problem);
+  let lo = Infinity, hi = -Infinity, slices = 0;
+  while (!solver.done) {
+    const part = solver.step(7);
+    if (part.lo < lo) lo = part.lo;
+    if (part.hi > hi) hi = part.hi;
+    slices++;
+  }
+  const scan = Q.angleScan(ising, n, p, options.samples, options.seed);
+  while (!scan.done) scan.step(13);
+  const scanned = scan.result();
+  const refiner = Q.angleRefiner(ising, n, p, scanned.best, scanned.costs);
+  const history = [];
+  while (!refiner.done) { refiner.step(); history.push(refiner.value); }
+  return {
+    exact: solver.result(), visited: solver.visited, total: solver.total, slices, lo, hi,
+    best: scanned.best, trace: Array.from(scanned.trace),
+    refined: refiner.result(), iterations: refiner.iteration, history,
+  };
 }
 
 let input = "";

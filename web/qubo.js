@@ -53,34 +53,66 @@
    * the lowest number is reported, which is the rule brute_force() in
    * problems.py follows, so both ports report the same x. The value
    * returned is the cost of that x computed directly, not the running
-   * total, so it carries no accumulated rounding. */
-  function bruteForce(Q) {
+   * total, so it carries no accumulated rounding.
+   *
+   * The solver is resumable so that a page can run it a slice at a
+   * time and draw its progress: step(count) scores up to `count` more
+   * assignments and returns the lowest and highest cost it saw in that
+   * slice. bruteForce() below runs the same code to completion. */
+  function exactSolver(Q) {
     const n = Q.n, M = Q.matrix;
     const x = new Array(n).fill(0);
+    const total = Math.pow(2, n);
     let cur = Q.offset;
     let best = cur, bestIndex = 0;
-    let prevGray = 0;
-    const total = 1 << n;
-    for (let mask = 1; mask < total; mask++) {
-      const gray = mask ^ (mask >> 1);
-      const diff = gray ^ prevGray;
-      const k = 31 - Math.clz32(diff);
-      prevGray = gray;
-      let s = M[k][k];
-      for (let j = 0; j < n; j++) {
-        if (j !== k && x[j]) s += M[k][j] + M[j][k];
+    let prevGray = 0, mask = 1; // the all-zero assignment is scored on creation
+
+    function step(count) {
+      const end = Math.min(total, mask + count);
+      let lo = Infinity, hi = -Infinity;
+      let c = cur, b = best, bi = bestIndex, pg = prevGray, m = mask;
+      for (; m < end; m++) {
+        const gray = m ^ (m >> 1);
+        const k = 31 - Math.clz32(gray ^ pg);
+        pg = gray;
+        let s = M[k][k];
+        for (let j = 0; j < n; j++) {
+          if (j !== k && x[j]) s += M[k][j] + M[j][k];
+        }
+        c += x[k] ? -s : s;
+        x[k] = x[k] ? 0 : 1;
+        if (c < b - TIE_TOLERANCE) {
+          b = c; bi = gray;
+        } else if (c <= b + TIE_TOLERANCE && gray < bi) {
+          bi = gray;
+        }
+        if (c < lo) lo = c;
+        if (c > hi) hi = c;
       }
-      cur += x[k] ? -s : s;
-      x[k] = x[k] ? 0 : 1;
-      if (cur < best - TIE_TOLERANCE) {
-        best = cur; bestIndex = gray;
-      } else if (cur <= best + TIE_TOLERANCE && gray < bestIndex) {
-        bestIndex = gray;
-      }
+      cur = c; best = b; bestIndex = bi; prevGray = pg; mask = m;
+      return { lo, hi };
     }
-    const bestX = [];
-    for (let i = 0; i < n; i++) bestX.push((bestIndex >> i) & 1);
-    return { value: cost(Q, bestX), x: bestX };
+
+    function result() {
+      const bestX = [];
+      for (let i = 0; i < n; i++) bestX.push((bestIndex >> i) & 1);
+      return { value: cost(Q, bestX), x: bestX };
+    }
+
+    return {
+      total,
+      step,
+      result,
+      get visited() { return mask; },
+      get done() { return mask >= total; },
+      get best() { return best; }, // lowest running cost so far
+    };
+  }
+
+  function bruteForce(Q) {
+    const solver = exactSolver(Q);
+    solver.step(Infinity);
+    return solver.result();
   }
 
   function maxcutQUBO(edges, n) {
@@ -169,7 +201,7 @@
     return { algorithm: "qaoa", params: { p }, rationale: reasons };
   }
 
-  const api = { makeQUBO, cost, density, bruteForce, maxcutQUBO, isingTerms, recommend, fixed, EXACT_CLASSICAL_LIMIT, TIE_TOLERANCE };
+  const api = { makeQUBO, cost, density, exactSolver, bruteForce, maxcutQUBO, isingTerms, recommend, fixed, EXACT_CLASSICAL_LIMIT, TIE_TOLERANCE };
   global.QOPT = Object.assign(global.QOPT || {}, api);
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

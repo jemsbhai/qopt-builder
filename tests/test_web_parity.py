@@ -25,6 +25,7 @@ from itertools import combinations
 
 import numpy as np
 import pytest
+from qiskit.quantum_info import Statevector
 
 from qopt_builder import PRESETS, QUBO, build_qaoa, expectation, maxcut_qubo, recommend
 from qopt_builder.problems import TIE_TOLERANCE
@@ -314,6 +315,45 @@ def test_demo_refinement_is_a_real_expectation(web):
     assert optimum - 1e-9 <= refined["value"] <= scan["best"]["value"] + 1e-12
 
 
+def test_success_probability_is_the_weight_on_optimal_assignments(web):
+    """The chance of measuring an optimum, shown by the guided demo:
+    Qiskit's probabilities at the page's refined angles, summed over the
+    assignments whose cost is the certified optimum."""
+    problem = BY_NAME["preset-demo"]["problem"]
+    scan = web["cases"]["preset-demo"]["scan"]
+    refined, p = scan["refined"], scan["p"]
+    qc, meta = build_qaoa(problem, p)
+    values = {meta["gammas"][k]: refined["gammas"][k] for k in range(p)}
+    values.update({meta["betas"][k]: refined["betas"][k] for k in range(p)})
+    probabilities = Statevector(qc.assign_parameters(values)).probabilities()
+    costs = problem.all_costs()
+    optimum, _ = problem.brute_force()
+    expected = float(probabilities[costs <= optimum + TIE_TOLERANCE].sum())
+    assert 0.0 < expected < 1.0
+    assert scan["success"] == pytest.approx(expected, abs=1e-9)
+
+
+def test_resumable_forms_reach_the_same_numbers(web):
+    """The guided demo runs the exact solve, the scan and the refinement
+    a slice at a time so it can draw them. Sliced unevenly, they give
+    exactly what the one-call forms give."""
+    entry = web["cases"]["preset-demo"]
+    stepped, scan = entry["stepped"], entry["scan"]
+    assert stepped["exact"] == entry["exact"]
+    assert stepped["visited"] == stepped["total"] == 2 ** entry["n"]
+    assert stepped["slices"] == math.ceil((stepped["total"] - 1) / 7)
+    costs = BY_NAME["preset-demo"]["problem"].all_costs()[1:]  # the slices start after assignment 0
+    assert stepped["lo"] == pytest.approx(float(costs.min()), abs=1e-9)
+    assert stepped["hi"] == pytest.approx(float(costs.max()), abs=1e-9)
+    assert stepped["trace"] == scan["trace"]
+    assert stepped["best"] == scan["best"]
+    assert stepped["refined"] == scan["refined"]
+    assert 0 < stepped["iterations"] <= 300
+    assert len(stepped["history"]) == stepped["iterations"]
+    assert all(b <= a + 1e-12 for a, b in zip(stepped["history"], stepped["history"][1:]))  # never gets worse
+    assert stepped["history"][-1] == scan["refined"]["value"]
+
+
 def test_web_demo_record(web):
     """The numbers the page shows for the demo preset, as in the README."""
     entry = web["cases"]["preset-demo"]
@@ -323,3 +363,4 @@ def test_web_demo_record(web):
     }
     assert format(entry["scan"]["best"]["value"], ".3f") == "-6.664"
     assert format(entry["scan"]["refined"]["value"], ".3f") == "-7.187"
+    assert format(100 * entry["scan"]["success"], ".1f") == "43.8"  # chance of measuring an optimum, in percent

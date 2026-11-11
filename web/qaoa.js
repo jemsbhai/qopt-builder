@@ -142,24 +142,61 @@
     };
   }
 
-  /* Coarse random scan, mirroring run_demo.py (200 uniform samples). */
-  function scanAngles(ising, n, p, samples, seed) {
-    const rng = mulberry32(seed || 20261110);
-    const costs = basisCosts(ising, n);
-    let best = { value: Infinity, gammas: null, betas: null };
-    const trace = [];
-    for (let s = 0; s < (samples || 200); s++) {
-      const gammas = Array.from({ length: p }, () => rng() * Math.PI);
-      const betas = Array.from({ length: p }, () => rng() * Math.PI);
-      const v = expectation(ising, n, p, gammas, betas, costs);
-      trace.push(v);
-      if (v < best.value) best = { value: v, gammas, betas };
+  /* Probability of measuring an optimal assignment: the total weight
+   * the state at these angles puts on assignments whose cost is within
+   * `tolerance` of `optimum`. */
+  function successProbability(ising, n, p, gammas, betas, optimum, tolerance) {
+    const st = runQAOA(ising, n, p, gammas, betas);
+    const cs = basisCosts(ising, n);
+    const tol = tolerance === undefined ? 1e-9 : tolerance;
+    let total = 0;
+    for (let idx = 0; idx < cs.length; idx++) {
+      if (cs[idx] <= optimum + tol) total += st.re[idx] * st.re[idx] + st.im[idx] * st.im[idx];
     }
-    return { best, trace, costs };
+    return total;
   }
 
-  /* Nelder-Mead refinement of the scanned angles (2p parameters). */
-  function refineAngles(ising, n, p, start, costs) {
+  /* Coarse random scan (200 uniform samples by default), as a resumable
+   * object so a page can run it a few samples at a time and draw the
+   * trace as it grows. step(count) scores up to `count` more samples.
+   * Each sample draws p gammas and then p betas, uniformly in [0, pi). */
+  function angleScan(ising, n, p, samples, seed) {
+    const rng = mulberry32(seed || 20261110);
+    const costs = basisCosts(ising, n);
+    const total = samples || 200;
+    let best = { value: Infinity, gammas: null, betas: null };
+    const trace = [];
+    return {
+      total,
+      step(count) {
+        const end = Math.min(total, trace.length + count);
+        while (trace.length < end) {
+          const gammas = Array.from({ length: p }, () => rng() * Math.PI);
+          const betas = Array.from({ length: p }, () => rng() * Math.PI);
+          const v = expectation(ising, n, p, gammas, betas, costs);
+          trace.push(v);
+          if (v < best.value) best = { value: v, gammas, betas };
+        }
+      },
+      result() { return { best, trace, costs }; },
+      get done() { return trace.length >= total; },
+      get best() { return best; },
+      get trace() { return trace; },
+    };
+  }
+
+  /* The whole scan in one call. */
+  function scanAngles(ising, n, p, samples, seed) {
+    const scan = angleScan(ising, n, p, samples, seed);
+    scan.step(Infinity);
+    return scan.result();
+  }
+
+  /* Nelder-Mead refinement of the scanned angles (2p parameters), as a
+   * resumable object: step() performs one iteration, so a page can draw
+   * the value as it converges. It stops after 300 iterations, or when
+   * the simplex has collapsed to within 1e-10 in value. */
+  function angleRefiner(ising, n, p, start, costs) {
     const cs = costs || basisCosts(ising, n);
     const x0 = [...start.gammas, ...start.betas];
     const d = x0.length;
@@ -171,7 +208,11 @@
       simplex.push(pt);
     }
     let vals = simplex.map(f);
-    for (let iter = 0; iter < 300; iter++) {
+    let iter = 0, done = false;
+
+    function step() {
+      if (done) return;
+      if (iter >= 300) { done = true; return; }
       const order = vals.map((v, i) => i).sort((a, b) => vals[a] - vals[b]);
       simplex = order.map((i) => simplex[i]);
       vals = order.map((i) => vals[i]);
@@ -197,18 +238,40 @@
           }
         }
       }
-      if (Math.abs(vals[d] - vals[0]) < 1e-10) break;
+      iter++;
+      if (Math.abs(vals[d] - vals[0]) < 1e-10 || iter >= 300) done = true;
     }
-    const bi = vals.indexOf(Math.min(...vals));
-    const bx = simplex[bi];
-    return { value: vals[bi], gammas: bx.slice(0, p), betas: bx.slice(p) };
+
+    function result() {
+      const bi = vals.indexOf(Math.min(...vals));
+      const bx = simplex[bi];
+      return { value: vals[bi], gammas: bx.slice(0, p), betas: bx.slice(p) };
+    }
+
+    return {
+      step,
+      result,
+      get done() { return done; },
+      get iteration() { return iter; },
+      get value() { return Math.min(...vals); }, // best value in the simplex so far
+    };
+  }
+
+  /* The whole refinement in one call. */
+  function refineAngles(ising, n, p, start, costs) {
+    const refiner = angleRefiner(ising, n, p, start, costs);
+    while (!refiner.done) refiner.step();
+    return refiner.result();
   }
 
   /* Largest n simulated: 2^14 amplitudes per sample. Same value as
    * SIMULATION_LIMIT in qopt_builder/simulate.py. */
   const SIMULATION_LIMIT = 14;
 
-  const api = { runQAOA, basisCosts, expectation, topBitstrings, scanAngles, refineAngles, SIMULATION_LIMIT };
+  const api = {
+    runQAOA, basisCosts, expectation, topBitstrings, successProbability,
+    angleScan, scanAngles, angleRefiner, refineAngles, SIMULATION_LIMIT,
+  };
   global.QOPT = Object.assign(global.QOPT || {}, api);
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
