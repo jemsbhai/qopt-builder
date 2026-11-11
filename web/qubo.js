@@ -233,8 +233,10 @@
   /* ------------------------------------------------- text typed into the page
    * The page reads problems from text boxes. These functions turn that
    * text into the arguments of maxcutQUBO() and makeQUBO(), and say
-   * which line is at fault when they cannot. They have no counterpart
-   * in the Python package, which takes lists and arrays, not text. */
+   * which line is at fault when they cannot. The formats are the file
+   * formats of the Python command line: parse_edge_list(),
+   * parse_matrix() and parse_offset() in qopt_builder/textio.py read
+   * the same text and word their errors the same way. */
 
   // a plain decimal number: optional sign, digits, optional point and exponent
   const NUMBER_TEXT = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
@@ -246,20 +248,30 @@
     return value;
   }
 
+  /* The numbers on one line: what stands before any #, split at spaces,
+   * tabs and commas. A blank line, or one that holds only a comment,
+   * gives an empty list. */
+  function tokensOf(line) {
+    return line.split("#")[0].split(/[, \t\v\f\r]+/).filter(Boolean);
+  }
+
+  const trimmed = (text) => String(text).replace(/^[ \t\v\f\r\n]+|[ \t\v\f\r\n]+$/g, "");
+
   function tooManyVariables(n, limit) {
     return "This page handles problems of up to " + limit + " variables, and this one has " + n +
       ". The Python package has no such limit.";
   }
 
   /* An edge list, one edge per line: two node numbers and an optional
-   * weight (1 when left out), separated by spaces or commas. Blank
-   * lines are skipped. Returns { edges, n }, with n one more than the
-   * largest node number used. `maxVariables`, when given, caps n. */
+   * weight (1 when left out), separated by spaces, tabs or commas.
+   * Blank lines are skipped, and so is anything after a #. Returns
+   * { edges, n }, with n one more than the largest node number used.
+   * `maxVariables`, when given, caps n. */
   function parseEdgeList(text, maxVariables) {
     const edges = [];
     let n = 0;
     String(text).split(/\r?\n/).forEach((line, index) => {
-      const tokens = line.trim().split(/[,\s]+/).filter(Boolean);
+      const tokens = tokensOf(line);
       if (!tokens.length) return;
       const where = "Line " + (index + 1) + ": ";
       if (tokens.length < 2 || tokens.length > 3) {
@@ -281,14 +293,14 @@
     return { edges, n };
   }
 
-  /* A matrix, one row per line, numbers separated by spaces or commas.
-   * Blank lines are skipped. Returns the rows, checked to be square;
-   * makeQUBO() then checks the layout. `maxVariables`, when given, caps
-   * the number of rows. */
+  /* A matrix, one row per line, numbers separated by spaces, tabs or
+   * commas. Blank lines are skipped, and so is anything after a #.
+   * Returns the rows, checked to be square; makeQUBO() then checks the
+   * layout. `maxVariables`, when given, caps the number of rows. */
   function parseMatrix(text, maxVariables) {
     const rows = [], lineOf = [];
     String(text).split(/\r?\n/).forEach((line, index) => {
-      const tokens = line.trim().split(/[,\s]+/).filter(Boolean);
+      const tokens = tokensOf(line);
       if (!tokens.length) return;
       rows.push(tokens.map((token) => numberFrom(token, "Line " + (index + 1) + ": ")));
       lineOf.push(index + 1);
@@ -311,14 +323,14 @@
 
   /* The constant offset box: empty means 0. */
   function parseOffset(text) {
-    const token = String(text).trim();
+    const token = trimmed(text);
     return token === "" ? 0 : numberFrom(token, "Offset: ");
   }
 
   /* The qubit budget box: empty means no budget (null); otherwise a
    * whole number of qubits, 0 or more. */
   function parseBudget(text) {
-    const token = String(text).trim();
+    const token = trimmed(text);
     if (token === "") return null;
     if (!/^\d+$/.test(token) || !Number.isSafeInteger(Number(token))) {
       throw new Error('Qubit budget: "' + token + '" is not a whole number, 0 or more.');

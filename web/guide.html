@@ -113,7 +113,7 @@ Certified optimum <span data-fact="demo-optimum">-8.000</span>; gap after refine
 2, 0</pre>
     <ul>
       <li>Nodes are numbered from 0. The graph has one more node than the largest number you use, so skipping a number leaves a node with no edges.</li>
-      <li>Numbers may be separated by spaces or commas. Blank lines are ignored.</li>
+      <li>Numbers may be separated by spaces, tabs or commas. Blank lines are ignored, and so is anything after a <code>#</code> on a line, so a problem can carry notes.</li>
       <li>The weight is optional and is 1 when left out. It may be negative or fractional.</li>
       <li>The direction of an edge does not matter: <code>2, 0</code> and <code>0, 2</code> are the same edge. An edge written twice counts twice.</li>
       <li>An edge cannot join a node to itself.</li>
@@ -129,6 +129,7 @@ Certified optimum <span data-fact="demo-optimum">-8.000</span>; gap after refine
       <li>The diagonal holds the cost of each variable on its own. An entry off the diagonal is a <a class="term" href="glossary.html#term-coupling">coupling</a> between two variables.</li>
       <li>Write each coupling either once, on one side of the diagonal (a triangular matrix, as above), or split in half over both sides (a symmetric matrix). A matrix that is neither is rejected, because it is most often a typing mistake.</li>
       <li>The constant offset is optional. It shifts every cost by the same amount and does not change which assignment is best.</li>
+      <li>As in an edge list, blank lines and anything after a <code>#</code> are ignored.</li>
     </ul>
 
     <h3 id="presets">The presets</h3>

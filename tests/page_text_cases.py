@@ -1,12 +1,15 @@
-"""Text as it is typed into the builder page, and what the page's
-parsers must make of it.
+"""Problems written as text, and what a parser must make of them.
 
-The parsers (parseEdgeList, parseMatrix, parseOffset and parseBudget in
-web/qubo.js) have no counterpart in the Python package, which takes
-lists and arrays, not text. They are pinned here. tests/test_web_parity.py
-runs every case through the page's code under Node.js, and
-tests/test_docs.py checks that the user guide quotes these messages
-word for word.
+The same text formats are read in two places: by the text boxes of the
+builder page (parseEdgeList, parseMatrix, parseOffset and parseBudget
+in web/qubo.js) and by the command line (qopt_builder/textio.py). The
+cases are pinned here once. tests/test_web_parity.py runs every one
+through the page's code under Node.js, tests/test_textio.py runs them
+through the Python parsers, and tests/test_docs.py checks that the user
+guide quotes these messages word for word.
+
+A case with a "limit" is about the page's own cap on problem size,
+which the Python package does not have.
 """
 
 from qopt_builder import PRESETS
@@ -68,6 +71,13 @@ TEXTS = {
         "edges", "0, 1, 2\r\n\r\n   2,0 , -1  \r\n", ok({"edges": [[0, 1, 2], [2, 0, -1]], "n": 3})),
     "edges-tabs-and-signs": text("edges", "0\t3\t+1.5e1\n3 1 -.5", ok({"edges": [[0, 3, 15], [3, 1, -0.5]], "n": 4})),
     "edges-repeated-and-reversed": text("edges", "0 1\n1 0 2", ok({"edges": [[0, 1, 1], [1, 0, 2]], "n": 2})),
+    "edges-comments": text(
+        "edges", "# a triangle\n0 1  # first edge\n\n1 2 2.5#weighted\n   # nothing here\n2 0\n",
+        ok({"edges": [[0, 1, 1], [1, 2, 2.5], [2, 0, 1]], "n": 3})),
+    "edges-only-comments": text("edges", "# nothing\n  # at all\n", error(NO_EDGES)),
+    "edges-error-after-comments": text("edges", "# header\n0 1\n# note\n1 x\n", error(not_a_number_text("Line 4", "x"))),
+    "edges-form-feed-and-vertical-tab": text("edges", "0\x0b1\x0c2", ok({"edges": [[0, 1, 2]], "n": 2})),
+    "edges-no-break-space-is-not-a-separator": text("edges", "0\u00a01", error(edge_form(1))),
     "edges-empty": text("edges", "", error(NO_EDGES)),
     "edges-only-blank-lines": text("edges", "  \n\n\t\n", error(NO_EDGES)),
     "edges-one-number": text("edges", "0 1\n2", error(edge_form(2))),
@@ -89,6 +99,9 @@ TEXTS = {
     "matrix-plain": text("matrix", "0 1\n1 0", ok([[0, 1], [1, 0]])),
     "matrix-commas-blank-lines": text("matrix", "-1, 2.5\r\n\r\n0,3\n", ok([[-1, 2.5], [0, 3]])),
     "matrix-one-entry": text("matrix", " 7 ", ok([[7]])),
+    "matrix-comments": text("matrix", "# Q\n0 1 # row 0\n\n1 0\n", ok([[0, 1], [1, 0]])),
+    "matrix-only-comments": text("matrix", "# no rows yet\n", error(NO_MATRIX)),
+    "matrix-short-row-after-comments": text("matrix", "# Q\n1 2\n# gap\n3\n", error(row_length(4, "1 number", "2 rows"))),
     "matrix-empty": text("matrix", "", error(NO_MATRIX)),
     "matrix-only-blank-lines": text("matrix", "\n \n", error(NO_MATRIX)),
     "matrix-short-row": text("matrix", "1 2\n\n3", error(row_length(3, "1 number", "2 rows"))),
@@ -102,6 +115,7 @@ TEXTS = {
     "offset-blank": text("offset", "   ", ok(0)),
     "offset-number": text("offset", " -2.5 ", ok(-2.5)),
     "offset-exponent": text("offset", "1e-3", ok(0.001)),
+    "offset-with-line-breaks": text("offset", "\n\t3.5\r\n", ok(3.5)),
     "offset-a-word": text("offset", "abc", error(not_a_number_text("Offset", "abc"))),
     "offset-decimal-comma": text("offset", "1,5", error(not_a_number_text("Offset", "1,5"))),
     "offset-overflow": text("offset", "-1e999", error(too_large("Offset", "-1e999"))),
