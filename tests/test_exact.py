@@ -9,7 +9,8 @@ each cost from the definition with plain loops and exact summation.
 import numpy as np
 import pytest
 
-from qopt_builder import QUBO, maxcut_qubo
+from qopt_builder import QUBO, maxcut_qubo, problems
+from qopt_builder.problems import TIE_TOLERANCE
 from reference_impl import all_costs, bits, cut_weight, qubo_cost, reference_minimum
 from run_demo import EDGES, N
 
@@ -64,9 +65,22 @@ def test_brute_force_matches_reference(n, layout, integer, seed):
     assert value == pytest.approx(ref_value, abs=1e-9)
     # the reported assignment attains the reported value
     assert qubo_cost(matrix.tolist(), x, offset) == pytest.approx(value, abs=1e-9)
-    if integer:
-        # ties are exact here, and the lowest-numbered optimum is reported
-        assert x == ref_x
+    # and it is the lowest-numbered optimum
+    assert x == ref_x
+
+
+@pytest.mark.parametrize("block_bits", [0, 1, 3])
+@pytest.mark.parametrize("n, layout, integer, seed", CASES[1::5])
+def test_brute_force_across_block_boundaries(monkeypatch, block_bits, n, layout, integer, seed):
+    """brute_force() works through the assignments in blocks of
+    2**_BLOCK_BITS. With tiny blocks, small problems take the same
+    many-block route that n > 20 takes at the real block size."""
+    monkeypatch.setattr(problems, "_BLOCK_BITS", block_bits)
+    matrix, offset = random_qubo(1000 * n + seed, n, layout, integer)
+    value, x = QUBO(matrix, offset=offset).brute_force()
+    ref_value, ref_x, _ = reference_minimum(matrix.tolist(), offset)
+    assert value == pytest.approx(ref_value, abs=1e-9)
+    assert [int(v) for v in x] == ref_x
 
 
 @pytest.mark.parametrize("n, layout, integer, seed", CASES[::7])
@@ -101,6 +115,42 @@ def test_all_zero_problem_reports_the_all_zero_assignment():
     value, x = QUBO(np.zeros((5, 5)), offset=1.5).brute_force()
     assert value == 1.5
     assert not x.any()
+
+
+def test_rounding_noise_does_not_decide_a_tie():
+    """Choosing x_0 alone costs -0.3. Choosing x_1 and x_2 costs
+    -0.1 - 0.2, the same on paper and -0.30000000000000004 in floating
+    point. The two are tied, and the lower-numbered one is reported; the
+    strict floating-point minimum would have picked the other."""
+    matrix = np.diag([-0.3, -0.1, -0.2])
+    matrix[0, 1] = matrix[0, 2] = 1.0  # x_0 together with either of the others costs more
+    problem = QUBO(matrix)
+    gap = problem.cost([1, 0, 0]) - problem.cost([0, 1, 1])
+    assert 0.0 < gap < TIE_TOLERANCE
+    value, x = problem.brute_force()
+    assert [int(v) for v in x] == [1, 0, 0]
+    assert value == -0.3
+
+
+@pytest.mark.parametrize("block_bits", [0, 2, 20])
+def test_tie_in_a_later_block_keeps_the_lower_number(monkeypatch, block_bits):
+    """Two optimal assignments, x = [1 0 0 0 0] (number 1) and
+    x = [0 0 0 0 1] (number 16), which fall in different blocks when the
+    blocks are small."""
+    monkeypatch.setattr(problems, "_BLOCK_BITS", block_bits)
+    matrix = np.diag([-1.0, 0.5, 0.5, 0.5, -1.0])
+    matrix[0, 4] = 1.0  # setting both costs -1, the same as setting either
+    value, x = QUBO(matrix).brute_force()
+    assert value == -1.0
+    assert [int(v) for v in x] == [1, 0, 0, 0, 0]
+
+
+@pytest.mark.parametrize("block_bits", [0, 2, 20])
+def test_optimum_only_in_the_last_block(monkeypatch, block_bits):
+    monkeypatch.setattr(problems, "_BLOCK_BITS", block_bits)
+    value, x = QUBO(np.diag([1.0, 1.0, 1.0, 1.0, -2.0])).brute_force()
+    assert value == -2.0
+    assert [int(v) for v in x] == [0, 0, 0, 0, 1]
 
 
 @pytest.mark.parametrize(
@@ -152,3 +202,63 @@ def test_demo_cut_by_hand():
     assert sorted((i, j) for i, j, _ in crossing) == [(0, 1), (1, 2), (1, 3), (2, 4), (3, 4), (4, 5)]
     assert cut_weight(EDGES, x) == 8.0
     assert maxcut_qubo(EDGES, N).cost(x) == -8.0
+
+
+# ----------------------------------------- larger n, answer known in advance
+
+def planted(n: int, seed: int):
+    """A QUBO whose unique optimum is a chosen assignment t, with cost 0.
+
+    cost(x) = sum over edges of w * ((x_i - t_i) - (x_j - t_j))^2, plus
+    (x_0 - t_0)^2, expanded into matrix form. Every term is a square, so
+    the cost is zero only at x = t (the graph is connected).
+    """
+    rng = np.random.default_rng(seed)
+    t = rng.integers(0, 2, size=n)
+    edges = [(i, i + 1, float(rng.integers(1, 4))) for i in range(n - 1)]
+    edges += [(int(a), int(b), float(rng.integers(1, 4)))
+              for a, b in rng.integers(0, n, size=(2 * n, 2)) if a < b]
+    q = np.zeros((n, n))
+    offset = 0.0
+
+    def add_linear(i, w):  # w * (x_i - t_i)^2 = w * ((1 - 2 t_i) x_i + t_i)
+        nonlocal offset
+        q[i, i] += w * (1 - 2 * t[i])
+        offset += w * t[i]
+
+    add_linear(0, 1.0)
+    for i, j, w in edges:
+        # w * (a - b)^2 with a = x_i - t_i and b = x_j - t_j
+        add_linear(i, w)
+        add_linear(j, w)
+        q[i, j] += -2 * w            # -2 w x_i x_j
+        q[i, i] += 2 * w * t[j]      # +2 w t_j x_i
+        q[j, j] += 2 * w * t[i]      # +2 w t_i x_j
+        offset += -2 * w * t[i] * t[j]
+    return QUBO(q, offset=offset), [int(v) for v in t]
+
+
+@pytest.mark.parametrize("n", [5, 8])
+def test_planted_construction_is_what_it_claims(n):
+    problem, t = planted(n, seed=n)
+    value, x, n_optimal = reference_minimum(problem.matrix.tolist(), problem.offset)
+    assert (value, x, n_optimal) == (0.0, t, 1)
+
+
+@pytest.mark.parametrize("n", [12, 16, 20, 21, 22, 24])
+def test_planted_optimum_is_found(n):
+    """Sizes up to the n = 24 limit, on both sides of the block size."""
+    problem, t = planted(n, seed=n)
+    value, x = problem.brute_force()
+    assert value == 0.0
+    assert [int(v) for v in x] == t
+
+
+@pytest.mark.parametrize("n", [20, 22, 24])
+def test_even_ring_maxcut(n):
+    """An even ring is two-colourable: every edge is cut, and of the two
+    alternating colourings the one with x_0 = 1 has the lower number."""
+    ring = [(i, (i + 1) % n, 1.0) for i in range(n)]
+    value, x = maxcut_qubo(ring, n).brute_force()
+    assert value == -float(n)
+    assert [int(v) for v in x] == [1, 0] * (n // 2)

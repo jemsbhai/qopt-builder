@@ -41,13 +41,24 @@
     return coupled / (n * (n - 1) / 2);
   }
 
+  /* Assignments whose cost is within this distance of the minimum count
+   * as tied. Same constant as TIE_TOLERANCE in problems.py. */
+  const TIE_TOLERANCE = 1e-9;
+
   /* Exact optimum by Gray-code enumeration: flipping one bit at a
-   * time keeps the incremental cost update O(n) per state. */
+   * time keeps the incremental cost update O(n) per state.
+   *
+   * Assignment number k has x_i = bit i of k (the Gray code word is
+   * that number). When several assignments are optimal, the one with
+   * the lowest number is reported, which is the rule brute_force() in
+   * problems.py follows, so both ports report the same x. The value
+   * returned is the cost of that x computed directly, not the running
+   * total, so it carries no accumulated rounding. */
   function bruteForce(Q) {
     const n = Q.n, M = Q.matrix;
     const x = new Array(n).fill(0);
     let cur = Q.offset;
-    let best = cur, bestX = x.slice();
+    let best = cur, bestIndex = 0;
     let prevGray = 0;
     const total = 1 << n;
     for (let mask = 1; mask < total; mask++) {
@@ -61,9 +72,15 @@
       }
       cur += x[k] ? -s : s;
       x[k] = x[k] ? 0 : 1;
-      if (cur < best) { best = cur; bestX = x.slice(); }
+      if (cur < best - TIE_TOLERANCE) {
+        best = cur; bestIndex = gray;
+      } else if (cur <= best + TIE_TOLERANCE && gray < bestIndex) {
+        bestIndex = gray;
+      }
     }
-    return { value: best, x: bestX };
+    const bestX = [];
+    for (let i = 0; i < n; i++) bestX.push((bestIndex >> i) & 1);
+    return { value: cost(Q, bestX), x: bestX };
   }
 
   function maxcutQUBO(edges, n) {
@@ -152,7 +169,7 @@
     return { algorithm: "qaoa", params: { p }, rationale: reasons };
   }
 
-  const api = { makeQUBO, cost, density, bruteForce, maxcutQUBO, isingTerms, recommend, fixed, EXACT_CLASSICAL_LIMIT };
+  const api = { makeQUBO, cost, density, bruteForce, maxcutQUBO, isingTerms, recommend, fixed, EXACT_CLASSICAL_LIMIT, TIE_TOLERANCE };
   global.QOPT = Object.assign(global.QOPT || {}, api);
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

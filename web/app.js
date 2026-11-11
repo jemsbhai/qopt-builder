@@ -201,9 +201,12 @@
       const stats = Q.circuitStats(problem, ising, rec.params.p);
       show("circuit-card", true);
       const counts = Object.entries(stats.counts).map(([k, v]) => v + " " + k.toUpperCase()).join(", ");
+      const angleNote = stats.params === 2 * rec.params.p
+        ? "gammas and betas for p = " + rec.params.p
+        : "betas only for p = " + rec.params.p + ", because this cost function has no terms for a gamma to act on";
       $("circuit-stats").innerHTML =
         "<b>" + stats.qubits + "</b> qubits, depth <b>" + stats.depth + "</b>, <b>" + stats.total +
-        "</b> gates (" + counts + "), <b>" + stats.params + "</b> free parameters (gammas and betas for p = " + rec.params.p + ").";
+        "</b> gates (" + counts + "), <b>" + stats.params + "</b> free parameter" + (stats.params === 1 ? "" : "s") + " (" + angleNote + ").";
       $("circuit-svg").innerHTML = Q.renderCircuitSVG(stats.ops, n, Q.schedule(stats.ops, n));
 
       if (n <= 14) {

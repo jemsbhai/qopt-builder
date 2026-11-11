@@ -44,7 +44,11 @@
     const { depth } = schedule(ops, Q.n);
     const counts = {};
     for (const op of ops) counts[op.type] = (counts[op.type] || 0) + 1;
-    return { qubits: Q.n, depth, total: ops.length, counts, params: 2 * p, ops };
+    // Free parameters are the angles that appear in a gate, which is how
+    // Qiskit counts them: p betas always, and p gammas unless the cost
+    // function has no terms at all (then there is no RZ or RZZ to carry one).
+    const params = (counts.rz || counts.rzz) ? 2 * p : p;
+    return { qubits: Q.n, depth, total: ops.length, counts, params, ops };
   }
 
   function renderCircuitSVG(ops, n, depthInfo) {

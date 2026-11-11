@@ -74,7 +74,7 @@ def test_qubit_and_parameter_counts(name, p):
     problem = PROBLEMS[name]
     qc, meta = build_qaoa(problem, p)
     assert qc.num_qubits == problem.n
-    assert qc.num_parameters == 2 * p  # one gamma and one beta per layer
+    assert qc.num_parameters == 2 * p  # one gamma and one beta per layer (every problem here has terms)
     expected_names = {f"g{k}" for k in range(p)} | {f"b{k}" for k in range(p)}
     assert {parameter.name for parameter in qc.parameters} == expected_names
     assert meta["p"] == p
@@ -91,6 +91,21 @@ def test_gate_counts(name, p):
     qc, _ = build_qaoa(problem, p)
     expected = {"h": problem.n, "rx": p * problem.n, "rz": p * linear, "rzz": p * couplings}
     assert dict(qc.count_ops()) == {gate: count for gate, count in expected.items() if count}
+
+
+@pytest.mark.parametrize("p", DEPTHS)
+def test_cost_function_without_terms(p):
+    """A constant cost function has nothing for gamma to act on, so the
+    circuit is the Hadamards and the mixer, with the p betas as its only
+    parameters. Scoring it still works and returns the constant."""
+    problem = QUBO(np.zeros((3, 3)), offset=2.5)
+    qc, meta = build_qaoa(problem, p)
+    assert dict(qc.count_ops()) == {"h": 3, "rx": 3 * p}
+    assert {parameter.name for parameter in qc.parameters} == {f"b{k}" for k in range(p)}
+    gammas, betas = angles(5, p)
+    values = {meta["gammas"][k]: gammas[k] for k in range(p)}
+    values.update({meta["betas"][k]: betas[k] for k in range(p)})
+    assert expectation(qc, meta["h"], meta["J"], meta["offset"], values) == pytest.approx(2.5, abs=1e-12)
 
 
 def test_maxcut_has_no_linear_terms():

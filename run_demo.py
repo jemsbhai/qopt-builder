@@ -6,7 +6,6 @@ against the brute-force optimum.
 """
 
 import numpy as np
-from qiskit import transpile
 from qiskit.quantum_info import Statevector
 
 from qopt_builder import build_qaoa, maxcut_qubo, recommend
@@ -19,8 +18,9 @@ N = 6
 
 
 def expectation(qc, h, J, offset, params) -> float:
-    bound = qc.assign_parameters(params)
-    sv = Statevector.from_instruction(transpile(bound, optimization_level=0))
+    # strict=False: a cost function with no terms has no gate for gamma to act on
+    bound = qc.assign_parameters(params, strict=False)
+    sv = Statevector.from_instruction(bound)
     probs = sv.probabilities()
     total = 0.0
     for idx, pr in enumerate(probs):
