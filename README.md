@@ -40,6 +40,17 @@ python run_demo.py        # intake -> recommendation -> circuit -> scored scan
 python tests/test_demo.py # pins the table above; prints "7 passed"
 ```
 
+Your own problem, from a text file in the same formats as the text boxes on the site:
+
+```bash
+python -m qopt_builder run --edges graph.txt     # a graph: one edge per line, "i j weight"
+python -m qopt_builder run --qubo matrix.txt     # a QUBO matrix: one row per line
+python -m qopt_builder run --preset demo --json  # a built-in problem, reported as JSON
+python -m qopt_builder run --help                # every option
+```
+
+The exit status is 0 when a circuit was built, 1 when the builder refused the problem, and 2 when the input could not be used.
+
 Browser demo locally, with any static file server:
 
 ```bash
