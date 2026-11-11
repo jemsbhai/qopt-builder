@@ -87,8 +87,13 @@
       s += '<line x1="' + pos[i][0] + '" y1="' + pos[i][1] + '" x2="' + pos[j][0] + '" y2="' + pos[j][1] +
         '" stroke="' + (cut ? "#22d3ee" : "#3a4356") + '" stroke-width="' + (cut ? 2.6 : 1.2) + '"/>';
       if (n <= 10) {
+        // the weight sits beside its edge, on the side away from the centre,
+        // so that it is not hidden by the line it belongs to
         const mx = (pos[i][0] + pos[j][0]) / 2, my = (pos[i][1] + pos[j][1]) / 2;
-        s += '<text x="' + mx + '" y="' + (my - 3) + '" fill="#8b94a7" font-size="10" text-anchor="middle">' + w + "</text>";
+        const dx = pos[j][0] - pos[i][0], dy = pos[j][1] - pos[i][1], length = Math.hypot(dx, dy) || 1;
+        let nx = -dy / length, ny = dx / length;
+        if (nx * (mx - cx) + ny * (my - cy) < 0) { nx = -nx; ny = -ny; }
+        s += '<text x="' + (mx + 9 * nx) + '" y="' + (my + 9 * ny + 3.5) + '" fill="#c3cad8" font-size="10" text-anchor="middle">' + w + "</text>";
       }
     }
     for (let i = 0; i < n; i++) {
