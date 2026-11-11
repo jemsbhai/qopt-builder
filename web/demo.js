@@ -146,6 +146,7 @@
    * the controls (demo.html), and a link on the title and end cards,
    * which cover both while they are up. */
   const HOME = "index.html";
+  const PRIMER = "learn.html"; // for a viewer who is new to the subject
 
   function anchor(parent, label, href) {
     const link = html("a", null, label, parent);
@@ -346,6 +347,7 @@
         button.type = "button";
         button.addEventListener("click", () => setPaused(false));
         anchor(actions, "Back to the main page", HOME);
+        anchor(actions, "Read the primer", PRIMER);
       }
     });
     say("");
@@ -985,6 +987,7 @@
       again.type = "button";
       again.addEventListener("click", () => start(true));
       anchor(actions, "Back to the main page", HOME);
+      anchor(actions, "Read the primer", PRIMER);
     });
     say("");
   }

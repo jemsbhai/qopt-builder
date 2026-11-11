@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glossary: the Quantum Optimisation Circuit Builder</title>
+<meta name="description" content="Every term used by the Quantum Optimisation Circuit Builder, in plain language: amplitude, circuit depth, coupling density, QAOA, QUBO, certified optimum and the rest, each with what it means in this tool.">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="index.html">qopt&#8209;builder</a>
+    <nav aria-label="Site">
+      <a href="index.html#app">Builder</a>
+      <a href="demo.html">Guided demo</a>
+      <a href="learn.html">Primer</a>
+      <a href="glossary.html" aria-current="page">Glossary</a>
+      <a href="guide.html">User guide</a>
+      <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap doc">
+  <nav class="toc" aria-label="Learn">
+    <h2>Learn</h2>
+    <ol>
+      <li><a href="learn.html">Primer</a></li>
+      <li><a href="glossary.html">Glossary</a></li>
+      <li><a href="guide.html">User guide</a></li>
+    </ol>
+  </nav>
+
+  <article class="doc-body">
+    <h1>Glossary</h1>
+    <p class="lede">Every term used on this site, in plain language. Where a term has a particular meaning in the builder, a second line says what it is.</p>
+    <p>The <a href="learn.html">primer</a> introduces these ideas in order. This page is for looking one up.</p>
+
+    <ul class="letters" aria-label="Jump to a letter">
+      <li><a href="#letter-a">A</a></li>
+      <li><a href="#letter-b">B</a></li>
+      <li><a href="#letter-c">C</a></li>
+      <li><a href="#letter-d">D</a></li>
+      <li><a href="#letter-e">E</a></li>
+      <li><a href="#letter-f">F</a></li>
+      <li><a href="#letter-g">G</a></li>
+      <li><a href="#letter-h">H</a></li>
+      <li><a href="#letter-i">I</a></li>
+      <li><a href="#letter-l">L</a></li>
+      <li><a href="#letter-m">M</a></li>
+      <li><a href="#letter-n">N</a></li>
+      <li><a href="#letter-o">O</a></li>
+      <li><a href="#letter-p">P</a></li>
+      <li><a href="#letter-q">Q</a></li>
+      <li><a href="#letter-r">R</a></li>
+      <li><a href="#letter-s">S</a></li>
+      <li><a href="#letter-t">T</a></li>
+      <li><a href="#letter-v">V</a></li>
+      <li><a href="#letter-w">W</a></li>
+    </ul>
+
+    <h2 id="letter-a">A</h2>
+    <dl class="glossary">
+      <dt id="term-amplitude">Amplitude</dt>
+      <dd>One of the numbers that describe a set of qubits before they are measured. There is one amplitude for every bit string the qubits could return, and the squared size of an amplitude is the probability of measuring its bit string. An amplitude has a direction as well as a size; the direction is its <a href="#term-phase">phase</a>.</dd>
+
+      <dt id="term-angles">Angles (gamma and beta)</dt>
+      <dd>The adjustable numbers in a <a href="#term-qaoa">QAOA</a> circuit. Each <a href="#term-layer">layer</a> has one gamma, which sets how strongly the phase separator marks assignments by cost, and one beta, which sets how far the mixer moves weight between assignments. A circuit with p layers has 2p angles.</dd>
+      <dd class="tool"><b>In this tool:</b> the circuit is built with its angles left open. The page then tries <span data-fact="scan-samples">200</span> random settings and refines the best of them.</dd>
+
+      <dt id="term-assignment">Assignment</dt>
+      <dd>One complete set of answers: a 0 or a 1 for every <a href="#term-variable">variable</a>. Written as a bit string, variable 0 first.</dd>
+      <dd class="tool"><b>In this tool:</b> <code>x = [0 1 0 0 1 0]</code> sets variables 1 and 4 to 1. For MaxCut an assignment is one way of splitting the nodes into two groups.</dd>
+    </dl>
+
+    <h2 id="letter-b">B</h2>
+    <dl class="glossary">
+      <dt id="term-bit-string">Bit string</dt>
+      <dd>A sequence of 0s and 1s. Measuring n qubits returns a bit string of length n, which this tool reads as an <a href="#term-assignment">assignment</a>.</dd>
+    </dl>
+
+    <h2 id="letter-c">C</h2>
+    <dl class="glossary">
+      <dt id="term-certified-optimum">Certified optimum</dt>
+      <dd>The lowest cost any assignment can have, found by checking every assignment. It is certified because nothing was left unchecked.</dd>
+      <dd class="tool"><b>In this tool:</b> computed for problems of up to <span data-fact="exact-limit">24</span> variables. Every QAOA result is reported next to it.</dd>
+
+      <dt id="term-circuit">Circuit</dt>
+      <dd>A list of <a href="#term-gate">gates</a> applied to a set of qubits in order, ending in a measurement. The quantum counterpart of a program.</dd>
+
+      <dt id="term-cost">Cost</dt>
+      <dd>The number a problem attaches to each assignment. The builder always minimises, so lower is better. For MaxCut the cost is minus the weight of the cut, which turns "cut as much as possible" into "make the cost as low as possible".</dd>
+
+      <dt id="term-coupling">Coupling</dt>
+      <dd>A term of the cost that involves two variables: an amount added when both are 1. In a graph problem every edge gives one coupling. In the circuit every coupling becomes one <a href="#term-rzz">RZZ gate</a> per layer.</dd>
+
+      <dt id="term-coupling-density">Coupling density</dt>
+      <dd>The share of variable pairs that have a coupling, from 0 (no pair interacts) to 1 (every pair does). For a graph it is the number of edges divided by the number of possible edges.</dd>
+      <dd class="tool"><b>In this tool:</b> the recommendation chooses the number of layers from it: 1 layer up to <span data-fact="band-low">0.15</span>, 2 up to <span data-fact="band-high">0.5</span>, and 3 above that.</dd>
+
+      <dt id="term-cut">Cut</dt>
+      <dd>In <a href="#term-maxcut">MaxCut</a>, an edge is cut when its two ends are in different groups. The weight of a cut is the total weight of the edges it cuts.</dd>
+    </dl>
+
+    <h2 id="letter-d">D</h2>
+    <dl class="glossary">
+      <dt id="term-depth">Depth (of a circuit)</dt>
+      <dd>The number of time steps a circuit takes when gates on different qubits run side by side. A gate has to wait for every earlier gate that shares a qubit with it. Shallower circuits suffer less from <a href="#term-noise">noise</a> on real hardware. This is a different number from <a href="#term-p">p</a>, the number of QAOA layers, which is sometimes also called depth.</dd>
+    </dl>
+
+    <h2 id="letter-e">E</h2>
+    <dl class="glossary">
+      <dt id="term-entanglement">Entanglement</dt>
+      <dd>A property of a state of several qubits that cannot be described one qubit at a time: the results of measuring them are linked. Two-qubit gates such as RZZ create it. A circuit with no two-qubit gates could be simulated one qubit at a time.</dd>
+
+      <dt id="term-exact-solve">Exact solve</dt>
+      <dd>Finding the best assignment by computing the cost of every one. Simple and reliable, and possible only for small problems, because the number of assignments doubles with each variable.</dd>
+      <dd class="tool"><b>In this tool:</b> runs for up to <span data-fact="exact-limit">24</span> variables, in the Python package and in the browser.</dd>
+
+      <dt id="term-expected-cost">Expected cost</dt>
+      <dd>The average cost you would get by measuring a circuit many times. It is how a QAOA circuit is scored: lower is better, and it cannot be lower than the <a href="#term-optimum">optimum</a>.</dd>
+      <dd class="tool"><b>In this tool:</b> computed exactly from the simulated amplitudes, not estimated from samples.</dd>
+    </dl>
+
+    <h2 id="letter-f">F</h2>
+    <dl class="glossary">
+      <dt id="term-free-parameter">Free parameter</dt>
+      <dd>A number in a circuit that is left open for later and shown as a symbol. In a QAOA circuit the free parameters are the <a href="#term-angles">angles</a>.</dd>
+      <dd class="tool"><b>In this tool:</b> the circuit card reports how many there are, normally two per layer.</dd>
+    </dl>
+
+    <h2 id="letter-g">G</h2>
+    <dl class="glossary">
+      <dt id="term-gap">Gap</dt>
+      <dd>The distance between the <a href="#term-expected-cost">expected cost</a> of a circuit and the <a href="#term-certified-optimum">certified optimum</a>. A gap of 0 would mean every measurement returns a best answer.</dd>
+
+      <dt id="term-gate">Gate</dt>
+      <dd>One operation on one or two qubits. Each kind of gate changes amplitudes in a fixed way. This tool uses four: <a href="#term-h">H</a>, <a href="#term-rz">RZ</a>, <a href="#term-rzz">RZZ</a> and <a href="#term-rx">RX</a>.</dd>
+    </dl>
+
+    <h2 id="letter-h">H</h2>
+    <dl class="glossary">
+      <dt id="term-h">H gate (Hadamard)</dt>
+      <dd>A one-qubit gate that takes a qubit that is definitely 0 to an equal <a href="#term-superposition">superposition</a> of 0 and 1. QAOA applies it to every qubit first, so that all assignments start out equally likely.</dd>
+
+      <dt id="term-heuristic">Heuristic</dt>
+      <dd>A method that often gives good answers but comes with no guarantee of how good. QAOA is a heuristic.</dd>
+    </dl>
+
+    <h2 id="letter-i">I</h2>
+    <dl class="glossary">
+      <dt id="term-interference">Interference</dt>
+      <dd>What happens when amplitudes are added together: those with the same <a href="#term-phase">phase</a> reinforce, and those with opposite phase cancel. The mixer of a QAOA circuit uses it to move probability towards low-cost assignments.</dd>
+
+      <dt id="term-ising">Ising form</dt>
+      <dd>The same problem written with variables that are +1 or -1 instead of 0 or 1. It is the form in which a cost turns directly into gates: each term with one variable becomes an RZ gate, and each term with two becomes an RZZ gate.</dd>
+    </dl>
+
+    <h2 id="letter-l">L</h2>
+    <dl class="glossary">
+      <dt id="term-layer">Layer</dt>
+      <dd>One <a href="#term-phase-separator">phase separator</a> followed by one <a href="#term-mixer">mixer</a>. A QAOA circuit is the H gates followed by p layers.</dd>
+    </dl>
+
+    <h2 id="letter-m">M</h2>
+    <dl class="glossary">
+      <dt id="term-maxcut">MaxCut</dt>
+      <dd>The problem of splitting the nodes of a weighted graph into two groups so that the total weight of the edges running between the groups is as large as possible.</dd>
+
+      <dt id="term-measurement">Measurement</dt>
+      <dd>Reading the qubits. It returns one bit string, chosen at random with the probabilities set by the amplitudes, and it ends the computation.</dd>
+
+      <dt id="term-mixer">Mixer</dt>
+      <dd>The part of a QAOA layer that moves weight between assignments: an <a href="#term-rx">RX gate</a> on every qubit, all with the same angle beta.</dd>
+    </dl>
+
+    <h2 id="letter-n">N</h2>
+    <dl class="glossary">
+      <dt id="term-nelder-mead">Nelder-Mead</dt>
+      <dd>A standard classical method for improving a set of numbers without needing derivatives. It keeps a small cluster of trial settings and keeps replacing the worst one with a better one.</dd>
+      <dd class="tool"><b>In this tool:</b> the page uses it to refine the best angles found by the <a href="#term-scan">scan</a>.</dd>
+
+      <dt id="term-noise">Noise</dt>
+      <dd>The errors of real quantum hardware: gates that are slightly off, qubits that lose their state, and measurements that misread. Noise grows with the depth of a circuit and with its number of two-qubit gates.</dd>
+      <dd class="tool"><b>In this tool:</b> the simulations on this site have none.</dd>
+    </dl>
+
+    <h2 id="letter-o">O</h2>
+    <dl class="glossary">
+      <dt id="term-offset">Offset</dt>
+      <dd>A constant added to every cost. It does not change which assignment is best, only the value reported.</dd>
+      <dd class="tool"><b>In this tool:</b> the vertex cover preset has an offset of <span data-fact="vertex-cover-offset">16</span>.</dd>
+
+      <dt id="term-optimum">Optimum</dt>
+      <dd>The lowest cost any assignment has, and an assignment that has it. A problem can have several optimal assignments.</dd>
+      <dd class="tool"><b>In this tool:</b> when there are several, the builder reports the one with the lowest number, reading the assignment as a binary number with variable 0 as its lowest bit.</dd>
+    </dl>
+
+    <h2 id="letter-p">P</h2>
+    <dl class="glossary">
+      <dt id="term-p">p (number of layers)</dt>
+      <dd>How many times a QAOA circuit repeats its phase separator and mixer. More layers can reach a lower expected cost, and make a longer circuit.</dd>
+      <dd class="tool"><b>In this tool:</b> chosen by the recommendation from the <a href="#term-coupling-density">coupling density</a>: 1, 2 or 3.</dd>
+
+      <dt id="term-phase">Phase</dt>
+      <dd>The direction of an <a href="#term-amplitude">amplitude</a>, as opposed to its size. Phase does not affect a measurement made at once, but it decides how amplitudes combine in later gates.</dd>
+
+      <dt id="term-phase-separator">Phase separator</dt>
+      <dd>The part of a QAOA layer that turns the phase of each assignment's amplitude in proportion to its cost: an RZZ gate for every coupling and an RZ gate for every term with one variable, all scaled by the angle gamma.</dd>
+    </dl>
+
+    <h2 id="letter-q">Q</h2>
+    <dl class="glossary">
+      <dt id="term-qaoa">QAOA</dt>
+      <dd>The quantum approximate optimisation algorithm: a way of building a circuit from an optimisation problem so that measuring it tends to return low-cost assignments. Introduced by Farhi, Goldstone and Gutmann in 2014.</dd>
+
+      <dt id="term-qubit">Qubit</dt>
+      <dd>The basic unit of a quantum computer. Like a bit it gives 0 or 1 when read, but before that its state is described by <a href="#term-amplitude">amplitudes</a> for both answers.</dd>
+      <dd class="tool"><b>In this tool:</b> one qubit per variable of the problem.</dd>
+
+      <dt id="term-budget">Qubit budget</dt>
+      <dd>The number of qubits available on the machine you intend to use.</dd>
+      <dd class="tool"><b>In this tool:</b> optional. If the problem has more variables than the budget, the builder <a href="#term-refusal">refuses</a> instead of shrinking the problem.</dd>
+
+      <dt id="term-qubo">QUBO</dt>
+      <dd>Quadratic unconstrained binary optimisation: a problem whose cost is a sum of terms with one variable and terms with two, over variables that are 0 or 1. Written as a square table of numbers Q.</dd>
+      <dd class="tool"><b>In this tool:</b> the form every problem takes inside the builder. The table must be symmetric or triangular.</dd>
+    </dl>
+
+    <h2 id="letter-r">R</h2>
+    <dl class="glossary">
+      <dt id="term-refinement">Refinement</dt>
+      <dd>Improving the angles step by step from a starting point, as opposed to trying unrelated settings.</dd>
+      <dd class="tool"><b>In this tool:</b> the page refines the best scanned angles with <a href="#term-nelder-mead">Nelder-Mead</a>. The Python demo script scans only.</dd>
+
+      <dt id="term-refusal">Refusal</dt>
+      <dd>The builder's answer when a problem needs more qubits than the stated budget: no circuit is built, and the reason is given.</dd>
+
+      <dt id="term-rx">RX gate</dt>
+      <dd>A one-qubit gate that moves weight between the answers 0 and 1 by a chosen angle. The mixer of a QAOA circuit is an RX gate on every qubit.</dd>
+
+      <dt id="term-rz">RZ gate</dt>
+      <dd>A one-qubit gate that turns the phase of the answer 1 relative to the answer 0 by a chosen angle, without changing either probability.</dd>
+
+      <dt id="term-rzz">RZZ gate</dt>
+      <dd>A two-qubit gate that turns the phase one way when its two qubits agree and the other way when they differ. Each coupling of the problem becomes one RZZ gate in every layer.</dd>
+    </dl>
+
+    <h2 id="letter-s">S</h2>
+    <dl class="glossary">
+      <dt id="term-scan">Scan (angle scan)</dt>
+      <dd>Trying many unrelated settings of the angles and keeping the best.</dd>
+      <dd class="tool"><b>In this tool:</b> <span data-fact="scan-samples">200</span> random settings from a fixed seed, so the result is the same on every run. The page and the Python script draw their settings from different random generators, so their scan values differ.</dd>
+
+      <dt id="term-shot">Shot</dt>
+      <dd>One run of a circuit ending in one measurement, giving one bit string. Estimating probabilities on real hardware takes many shots.</dd>
+
+      <dt id="term-simulator">Simulator</dt>
+      <dd>An ordinary program that computes what a quantum circuit would do, by keeping every amplitude in memory. Exact and free of noise, but its cost doubles with every qubit.</dd>
+      <dd class="tool"><b>In this tool:</b> the page simulates up to <span data-fact="simulation-limit">14</span> qubits.</dd>
+
+      <dt id="term-statevector">Statevector</dt>
+      <dd>The full list of amplitudes of a set of qubits: 2<sup>n</sup> numbers for n qubits.</dd>
+
+      <dt id="term-superposition">Superposition</dt>
+      <dd>A state in which more than one answer has an amplitude that is not zero. A measurement still returns one answer.</dd>
+    </dl>
+
+    <h2 id="letter-t">T</h2>
+    <dl class="glossary">
+      <dt id="term-transpilation">Transpilation</dt>
+      <dd>Rewriting a circuit so that a particular machine can run it: using only the gates the machine has, and only between qubits that are connected on it. This usually adds gates and depth.</dd>
+    </dl>
+
+    <h2 id="letter-v">V</h2>
+    <dl class="glossary">
+      <dt id="term-variable">Variable</dt>
+      <dd>One yes-or-no decision of the problem, taking the value 0 or 1. Written x with a number, counted from 0.</dd>
+
+      <dt id="term-variational">Variational algorithm</dt>
+      <dd>A method that pairs a quantum circuit that has adjustable angles with a classical routine that tunes them, going back and forth between running the circuit and updating the angles.</dd>
+    </dl>
+
+    <h2 id="letter-w">W</h2>
+    <dl class="glossary">
+      <dt id="term-weight">Weight</dt>
+      <dd>The number on an edge of a graph. In MaxCut it is what a cut gains by separating the two ends of that edge.</dd>
+    </dl>
+
+    <div class="next">
+      <a href="learn.html">Primer<span>The ideas in order</span></a>
+      <a href="guide.html">User guide<span>A first run, card by card</span></a>
+      <a href="index.html#app">Open the builder<span>Try it on the demo graph</span></a>
+    </div>
+  </article>
+</main>
+</body>
+</html>

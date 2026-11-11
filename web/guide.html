@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User guide: the Quantum Optimisation Circuit Builder</title>
+<meta name="description" content="How to use the Quantum Optimisation Circuit Builder page: a first run on the demo graph, how to read each result card, how to enter your own graph or QUBO matrix, the limits, and what each error message means.">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="index.html">qopt&#8209;builder</a>
+    <nav aria-label="Site">
+      <a href="index.html#app">Builder</a>
+      <a href="demo.html">Guided demo</a>
+      <a href="learn.html">Primer</a>
+      <a href="glossary.html">Glossary</a>
+      <a href="guide.html" aria-current="page">User guide</a>
+      <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap doc">
+  <nav class="toc" aria-label="On this page">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#first-run">A first run</a></li>
+      <li><a href="#cards">Reading the results</a></li>
+      <li><a href="#own-problem">Entering your own problem</a></li>
+      <li><a href="#budget">The qubit budget</a></li>
+      <li><a href="#limits">Limits</a></li>
+      <li><a href="#errors">When the page says no</a></li>
+      <li><a href="#guided-demo">The guided demo</a></li>
+      <li><a href="#questions">Questions people ask</a></li>
+    </ol>
+    <div class="pages">
+      <h2>Learn</h2>
+      <ol>
+        <li><a href="learn.html">Primer</a></li>
+        <li><a href="glossary.html">Glossary</a></li>
+        <li><a href="guide.html">User guide</a></li>
+      </ol>
+    </div>
+  </nav>
+
+  <article class="doc-body">
+    <h1>Using the builder</h1>
+    <p class="lede">How to run the builder page, how to read each card it shows, and how to give it a problem of your own. If the vocabulary is new, the <a href="learn.html">primer</a> comes first.</p>
+
+    <h2 id="first-run">A first run</h2>
+    <p>Open <a href="index.html#app">the builder</a>. It runs the demo graph as soon as the page loads, so there are results on screen before you touch anything. Nothing is sent anywhere: the whole computation happens in your browser.</p>
+    <p>To run something else, work down the left-hand column:</p>
+    <ol>
+      <li><strong>Problem.</strong> Pick a preset from the list, or pick one of the two custom entries and type your own problem.</li>
+      <li><strong>Hardware budget.</strong> Optional. Enter the number of qubits your machine has, or leave it empty.</li>
+      <li>Press <strong>Run the builder</strong>. The line under the button says what the page is doing, and reports any problem with the input in red.</li>
+    </ol>
+    <p>The results appear on the right as a stack of cards, in the order the builder works: the problem, the recommendation, the exact solve, the circuit, and the simulated run.</p>
+
+    <h2 id="cards">Reading the results</h2>
+    <p>The examples below are what the page shows for the demo graph, the first preset.</p>
+
+    <h3 id="problem">Problem</h3>
+    <p>For a graph, a drawing of it with the weight on each edge, and a line such as:</p>
+    <pre>MaxCut on <span data-fact="demo-nodes">6</span> nodes, <span data-fact="demo-edges">8</span> edges. Coupling density <span data-fact="demo-density-3">0.533</span>.</pre>
+    <p>The <a class="term" href="glossary.html#term-coupling-density">coupling density</a> is the share of node pairs joined by an edge. Once the exact solve has run, the drawing is coloured: the two colours are the two groups of the best split, and the highlighted edges are the ones it cuts. For a QUBO matrix there is no drawing, and the line gives the number of variables, the offset if there is one, and the density.</p>
+
+    <h3 id="recommendation">Recommendation</h3>
+    <p>What the builder decided to do, then its reasons as a list. For the demo graph the heading reads <code>exact+qaoa (p = <span data-fact="demo-p">3</span>)</code>.</p>
+    <ul>
+      <li><code>exact+qaoa</code> means the problem is small enough to solve exactly, so the builder does that and builds a QAOA circuit alongside for comparison. This is what you get up to <span data-fact="exact-limit">24</span> variables.</li>
+      <li><code>qaoa</code> on its own means the problem is too large to check completely. The circuit is built, and its result will not be certified.</li>
+      <li><code>p</code> is the number of <a class="term" href="glossary.html#term-layer">layers</a> in the circuit. It follows from the coupling density: 1 layer up to <span data-fact="band-low">0.15</span>, 2 up to <span data-fact="band-high">0.5</span>, 3 above that.</li>
+    </ul>
+    <p>Each reason is a full sentence with the number that triggered it, so you can see exactly why the choice was made.</p>
+
+    <h3 id="refusal">Builder refusal</h3>
+    <p>This card replaces the recommendation when the problem has more variables than the qubit budget you entered. It gives the reason, and nothing below it is built. See <a href="#budget">the qubit budget</a>.</p>
+
+    <h3 id="exact">Exact classical solve</h3>
+    <pre>Certified optimum cost <span data-fact="demo-optimum">-8.000</span> at x = [0, 1, 0, 0, 1, 0]
+For MaxCut this is a maximum cut of weight <span data-fact="demo-cut-3">8.000</span>.</pre>
+    <p>The builder computed the cost of every <a class="term" href="glossary.html#term-assignment">assignment</a> and this is the lowest. The list <code>x</code> is the assignment that achieves it, variable 0 first: here nodes 1 and 4 are in one group and the rest in the other. Costs are minimised, so for MaxCut the cost is minus the weight of the cut.</p>
+    <p>When several assignments are equally good, the page reports the one with the lowest number. The demo graph has <span data-fact="demo-optimal-count">6</span> best splits and this is the first. The card also says how long the check took in your browser.</p>
+
+    <h3 id="circuit">QAOA circuit</h3>
+    <pre><span data-fact="demo-nodes">6</span> qubits, depth <span data-fact="demo-depth">19</span>, <span data-fact="demo-gates">48</span> gates (<span data-fact="demo-h">6</span> H, <span data-fact="demo-rzz">24</span> RZZ, <span data-fact="demo-rx">18</span> RX), <span data-fact="demo-params">6</span> free parameters</pre>
+    <p>Then the circuit itself. Each line is a <a class="term" href="glossary.html#term-qubit">qubit</a>, time runs left to right, a box is a gate on one qubit, and two linked dots are one gate on two qubits. Colour marks the layer. Long circuits scroll sideways.</p>
+    <ul>
+      <li><strong>Qubits</strong>: one per variable.</li>
+      <li><strong>Depth</strong>: the number of time steps when gates on different qubits run side by side. It is the number to watch for real hardware.</li>
+      <li><strong>Gates</strong>: an H on every qubit, then in each layer one RZZ per edge and one RX per qubit. For the demo graph that is 6 + 3 &times; (8 + 6).</li>
+      <li><strong>Free parameters</strong>: the <a class="term" href="glossary.html#term-angles">angles</a> still to be chosen, a gamma and a beta for each layer.</li>
+    </ul>
+
+    <h3 id="run">QAOA run</h3>
+    <pre>Coarse scan best expectation <span data-fact="web-scan">-6.664</span>. After refinement: <span data-fact="web-refined">-7.187</span>.
+Certified optimum <span data-fact="demo-optimum">-8.000</span>; gap after refinement <span data-fact="web-gap">0.813</span>.</pre>
+    <p>The page simulates the circuit to find good angles, in two stages. The <a class="term" href="glossary.html#term-scan">scan</a> tries <span data-fact="scan-samples">200</span> random settings and keeps the best. The <a class="term" href="glossary.html#term-refinement">refinement</a> then improves that setting step by step. Both numbers are <a class="term" href="glossary.html#term-expected-cost">expected costs</a>: the average cost you would get from many measurements. The <a class="term" href="glossary.html#term-gap">gap</a> is how far the refined circuit still is from the certified optimum.</p>
+    <p>The chart shows the 200 scanned values as a line, the certified optimum as a dashed line below them, and the refined value as a dot. No value can be below the dashed line.</p>
+    <p>The table lists the bit strings you would measure most often at the refined angles, with the probability and the cost of each. Rows marked <code>optimal</code> are best answers. In a good run they are near the top.</p>
+    <p>This card needs a full simulation, so it is filled in only up to <span data-fact="simulation-limit">14</span> variables. For a larger problem it says that no run was simulated.</p>
+
+    <h2 id="own-problem">Entering your own problem</h2>
+
+    <h3 id="edges">A graph, as an edge list</h3>
+    <p>Choose <strong>Custom MaxCut edge list</strong> and type one edge per line: two node numbers, then the weight.</p>
+    <pre>0, 1, 1
+1, 2, 2.5
+2, 0</pre>
+    <ul>
+      <li>Nodes are numbered from 0. The graph has one more node than the largest number you use, so skipping a number leaves a node with no edges.</li>
+      <li>Numbers may be separated by spaces or commas. Blank lines are ignored.</li>
+      <li>The weight is optional and is 1 when left out. It may be negative or fractional.</li>
+      <li>The direction of an edge does not matter: <code>2, 0</code> and <code>0, 2</code> are the same edge. An edge written twice counts twice.</li>
+      <li>An edge cannot join a node to itself.</li>
+    </ul>
+
+    <h3 id="matrix">Any other problem, as a QUBO matrix</h3>
+    <p>Choose <strong>Custom QUBO matrix</strong> and type the matrix one row per line. The cost of an assignment x is x<sup>T</sup>Qx plus the offset, and the builder minimises it.</p>
+    <pre>-1  2  0
+ 0 -1  2
+ 0  0 -1</pre>
+    <ul>
+      <li>The matrix must be square: as many numbers in every row as there are rows.</li>
+      <li>The diagonal holds the cost of each variable on its own. An entry off the diagonal is a <a class="term" href="glossary.html#term-coupling">coupling</a> between two variables.</li>
+      <li>Write each coupling either once, on one side of the diagonal (a triangular matrix, as above), or split in half over both sides (a symmetric matrix). A matrix that is neither is rejected, because it is most often a typing mistake.</li>
+      <li>The constant offset is optional. It shifts every cost by the same amount and does not change which assignment is best.</li>
+    </ul>
+
+    <h3 id="presets">The presets</h3>
+    <p>Each preset fills in the boxes, which stay editable, so a preset is also a starting point for your own variation.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Preset</th><th class="num">Layers</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr data-preset="demo"><td>Demo graph: weighted MaxCut, 6 nodes</td><td class="num">3</td><td>The reference example. Two triangles joined by two edges.</td></tr>
+        <tr data-preset="tree-14"><td>Sparse tree: MaxCut, 14 nodes</td><td class="num">1</td><td>A sparse graph, so one layer. Also the largest problem the page simulates.</td></tr>
+        <tr data-preset="ring-10"><td>Ring: MaxCut, 10 nodes</td><td class="num">2</td><td>Middling density, so two layers.</td></tr>
+        <tr data-preset="weighted-8"><td>Dense weighted graph: MaxCut, 8 nodes</td><td class="num">3</td><td>More than half of all pairs joined, with weights from 1 to 3.</td></tr>
+        <tr data-preset="chorded-ring-24"><td>Chorded ring: MaxCut, 24 nodes</td><td class="num">2</td><td>The largest problem that is still solved exactly. Too large to simulate, so the last card stays empty.</td></tr>
+        <tr data-preset="vertex-cover-6"><td>Vertex cover: QUBO, 6 variables</td><td class="num">3</td><td>A different problem entered as a matrix, with costs on the diagonal and an offset.</td></tr>
+        <tr data-preset="dense-qubo-6"><td>Dense symmetric QUBO, 6 variables</td><td class="num">3</td><td>A matrix in symmetric form with every pair coupled.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="budget">The qubit budget</h2>
+    <p>The budget is the number of qubits on the machine you have in mind. A problem needs one qubit per variable. If you enter a budget and the problem needs more, the builder refuses: it shows a refusal card with the reason and builds no circuit.</p>
+    <p>It refuses instead of cutting the problem down, because a circuit for part of your problem answers a different question, and nothing in its output would tell you so. To see a refusal, run the demo graph with a budget of 4.</p>
+    <p>The budget is a whole number, 0 or more. Leave the box empty for no limit.</p>
+
+    <h2 id="limits">Limits</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Limit</th><th class="num">Variables</th><th>What happens beyond it</th></tr></thead>
+      <tbody>
+        <tr><td>Simulated QAOA run</td><td class="num" data-fact="simulation-limit">14</td><td>The recommendation, the certified optimum and the circuit are still produced. The run card says it was not simulated.</td></tr>
+        <tr><td>Exact solve</td><td class="num" data-fact="exact-limit">24</td><td>The recommendation and the circuit are still produced. There is no certified optimum, and the recommendation says so.</td></tr>
+        <tr><td>This page</td><td class="num" data-fact="page-limit">64</td><td>The page reports the size and stops. The Python package has no such limit.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="errors">When the page says no</h2>
+    <p>If the input cannot be right, the page says what is wrong in red under the Run button and builds nothing. Messages about a text box name the line. These are the ones you are most likely to meet.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>The page says</th><th>What to do</th></tr></thead>
+      <tbody>
+        <tr><td><code class="msg">No edges given. Enter one edge per line: two node numbers and an optional weight.</code></td><td>The edge box is empty. Type at least one edge.</td></tr>
+        <tr><td><code class="msg">Line 2: an edge is two node numbers and an optional weight, for example 0 1 2.5.</code></td><td>That line has one number, or more than three.</td></tr>
+        <tr><td><code class="msg">Line 3: "x" is not a number.</code></td><td>Only plain numbers are read: digits, a sign, a decimal point, an exponent.</td></tr>
+        <tr><td><code class="msg">Line 1: node numbers must be whole numbers, 0 or more.</code></td><td>The first two numbers on a line name nodes. Check for a decimal or a minus sign.</td></tr>
+        <tr><td><code class="msg">Line 2: an edge cannot join node 3 to itself.</code></td><td>Both ends of that edge are the same node. Remove the line or fix one end.</td></tr>
+        <tr><td><code class="msg">No matrix given. Enter one row per line, numbers separated by spaces or commas.</code></td><td>The matrix box is empty.</td></tr>
+        <tr><td><code class="msg">Line 3 has 1 number, but the matrix has 2 rows. A QUBO matrix is square: every row needs as many numbers as there are rows.</code></td><td>Count the numbers on that line. A blank line does not count as a row.</td></tr>
+        <tr><td><code class="msg">QUBO matrix must be symmetric or triangular. Entries [0][1] and [1][0] differ, and there are nonzero entries on both sides of the diagonal.</code></td><td>Rows and columns are counted from 0. Make the two entries equal, or move every coupling to one side of the diagonal.</td></tr>
+        <tr><td><code class="msg">Offset: "abc" is not a number.</code></td><td>The offset is a single number, or empty for 0.</td></tr>
+        <tr><td><code class="msg">Qubit budget: "2.5" is not a whole number, 0 or more.</code></td><td>The budget counts qubits. Enter a whole number, or leave the box empty.</td></tr>
+        <tr><td><code class="msg">This page handles problems of up to 64 variables, and this one has 65. The Python package has no such limit.</code></td><td>The problem is too large for the page. A stray large node number in an edge list has the same effect.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="guided-demo">The guided demo</h2>
+    <p>The <a href="demo.html">guided demo</a> plays the same pipeline as an animation on one screen, with the circuit assembled gate by gate and each edge of the graph flying to the gate that encodes it. It is the quickest way to see what the builder does, and it is made to be recorded.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Key</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>Space</kbd></td><td>Start, pause and resume.</td></tr>
+        <tr><td><kbd>Right arrow</kbd></td><td>Skip to the end of the current stage.</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Restart from the beginning.</td></tr>
+        <tr><td><kbd>H</kbd></td><td>Show or hide the controls.</td></tr>
+        <tr><td><kbd>C</kbd></td><td>Show or hide the captions.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Options go in the address after a question mark, joined by <code>&amp;</code>, for example <code>demo.html?preset=ring-10&amp;speed=2</code>.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Option</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>preset=NAME</code></td><td>The problem to play: <code>demo</code>, <code>tree-14</code>, <code>ring-10</code>, <code>weighted-8</code>, <code>chorded-ring-24</code>, <code>vertex-cover-6</code> or <code>dense-qubo-6</code>.</td></tr>
+        <tr><td><code>budget=N</code></td><td>A qubit budget. <code>budget=4</code> with the demo graph shows a refusal.</td></tr>
+        <tr><td><code>speed=N</code></td><td><code>0.5</code>, <code>1</code> or <code>2</code>.</td></tr>
+        <tr><td><code>autoplay=1</code></td><td>Start as soon as the page opens, without waiting on the title card.</td></tr>
+        <tr><td><code>controls=0</code></td><td>Hide the controls, for a clean recording. Press Space to start.</td></tr>
+        <tr><td><code>captions=0</code></td><td>Hide the captions.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="questions">Questions people ask</h2>
+
+    <h3 id="q-quantum-computer">Is any of this running on a quantum computer?</h3>
+    <p>No. The circuits are run by a <a class="term" href="glossary.html#term-simulator">simulator</a> inside your browser, which is exact and has no noise. The Python package builds the same circuits as Qiskit objects, and Qiskit can run those on a simulator or on hardware.</p>
+
+    <h3 id="q-scan-differs">Why does the page show <span data-fact="web-scan">-6.664</span> for the scan when the Python script prints <span data-fact="python-scan">-7.308</span>?</h3>
+    <p>Both try 200 random settings of the angles, and they draw those settings from different random number generators: the page uses a small generator of its own, which gives the same sequence in every browser, and the Python script uses NumPy's. It is the same circuit scored at different angles. Everything that does not depend on the random draw is identical in the two, and the project's tests check that: they hand the page's 200 settings to Qiskit and require the same 200 values back, to nine decimal places.</p>
+
+    <h3 id="q-other-depth">The recommendation says p = 3. Can I build another depth?</h3>
+    <p>Not on the page, which builds what it recommends. In the Python package you can: <code>build_qaoa(problem, p)</code> takes any number of layers.</p>
+
+    <h3 id="q-no-run">Why is the QAOA run card empty for my problem?</h3>
+    <p>The run needs a full simulation, which the page does up to <span data-fact="simulation-limit">14</span> variables. Larger problems still get the recommendation, the circuit, and the certified optimum if they have 24 variables or fewer.</p>
+
+    <h3 id="q-same-numbers">Will I get the same numbers tomorrow?</h3>
+    <p>Yes. Nothing on the page depends on the time or on chance: the random settings of the scan come from a fixed seed, so a problem gives the same numbers every time you run it.</p>
+
+    <div class="next">
+      <a href="index.html#app">Open the builder<span>Try it on the demo graph</span></a>
+      <a href="learn.html">Primer<span>The ideas behind it</span></a>
+      <a href="glossary.html">Glossary<span>Every term on this site</span></a>
+    </div>
+  </article>
+</main>
+</body>
+</html>

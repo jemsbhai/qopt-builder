@@ -16,6 +16,7 @@
       <a href="#app">Live demo</a>
       <a href="#how">How it works</a>
       <a href="#validation">Validation</a>
+      <a href="learn.html">Learn</a>
       <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
     </nav>
   </div>
@@ -33,13 +34,14 @@
       <span class="chip">Refuses rather than truncating over budget</span>
     </div>
     <p class="watch"><a class="watch-btn" href="demo.html?autoplay=1">Watch the guided demo</a> A short animated walkthrough: the recommendation, the exact solve, and the circuit assembled gate by gate.</p>
+    <p class="learn-line">New to quantum computing? Start with the <a href="learn.html">primer</a>, keep the <a href="glossary.html">glossary</a> to hand, and follow the <a href="guide.html">user guide</a> through a first run.</p>
     <p class="context">Built for the Qiskit Fall Fest 2026 hackathon (DeepStation edition). By Muntaser Syed.</p>
   </section>
 
   <section id="app" class="panel app-panel">
     <div class="app-grid">
       <div class="controls">
-        <h2>1. Problem</h2>
+        <h2>1. Problem <a class="help" href="guide.html#own-problem" title="how to enter a problem" aria-label="Help: how to enter a problem">?</a></h2>
         <label class="field-label" for="preset">Preset</label>
         <select id="preset"></select>
         <p id="preset-about" class="fineprint"></p>
@@ -55,7 +57,7 @@
           <input id="offset-input" type="number" step="any" placeholder="0">
         </div>
 
-        <h2>2. Hardware budget (optional)</h2>
+        <h2>2. Hardware budget (optional) <a class="help" href="guide.html#budget" title="what the qubit budget does" aria-label="Help: what the qubit budget does">?</a></h2>
         <label class="field-label" for="budget">Qubit budget. Leave empty for no limit. If n exceeds the budget, the builder refuses instead of silently truncating the circuit.</label>
         <input id="budget" type="number" min="0" step="1" placeholder="no limit">
 
@@ -66,36 +68,36 @@
 
       <div class="results">
         <div id="graph-card" class="result-card" hidden>
-          <h3>Problem</h3>
+          <h3>Problem <a class="help" href="guide.html#problem" title="how to read this card" aria-label="Help: how to read this card">?</a></h3>
           <div id="graph-svg"></div>
           <p id="problem-stats" class="stats-line"></p>
         </div>
 
         <div id="rec-card" class="result-card" hidden>
-          <h3>Recommendation</h3>
+          <h3>Recommendation <a class="help" href="guide.html#recommendation" title="how to read this card" aria-label="Help: how to read this card">?</a></h3>
           <p id="rec-algo" class="rec-algo"></p>
           <ul id="rec-reasons"></ul>
         </div>
 
         <div id="refusal-card" class="result-card refusal" hidden>
-          <h3>Builder refusal</h3>
+          <h3>Builder refusal <a class="help" href="guide.html#refusal" title="why the builder refused" aria-label="Help: why the builder refused">?</a></h3>
           <ul id="refusal-reasons"></ul>
           <p>No circuit was built. Lower n or raise the budget and run again.</p>
         </div>
 
         <div id="exact-card" class="result-card" hidden>
-          <h3>Exact classical solve</h3>
+          <h3>Exact classical solve <a class="help" href="guide.html#exact" title="how to read this card" aria-label="Help: how to read this card">?</a></h3>
           <p id="exact-line" class="stats-line"></p>
         </div>
 
         <div id="circuit-card" class="result-card" hidden>
-          <h3>QAOA circuit</h3>
+          <h3>QAOA circuit <a class="help" href="guide.html#circuit" title="how to read this card" aria-label="Help: how to read this card">?</a></h3>
           <p id="circuit-stats" class="stats-line"></p>
           <div id="circuit-svg" class="circuit-scroll"></div>
         </div>
 
         <div id="qaoa-card" class="result-card" hidden>
-          <h3>QAOA run (statevector, in your browser)</h3>
+          <h3>QAOA run (statevector, in your browser) <a class="help" href="guide.html#run" title="how to read this card" aria-label="Help: how to read this card">?</a></h3>
           <p id="qaoa-line" class="stats-line"></p>
           <div id="scan-chart"></div>
           <h4>Most likely measurement outcomes at the refined angles</h4>

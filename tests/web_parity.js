@@ -113,6 +113,14 @@ function readText(t) {
   throw new Error("unknown kind " + t.kind);
 }
 
+/* The circuit shown in the primer (web/learn.html): a triangle at one
+ * layer, drawn by the page's own drawing code. */
+function triangleFigure() {
+  const problem = Q.maxcutQUBO([[0, 1], [1, 2], [0, 2]], 3);
+  const stats = Q.circuitStats(problem, Q.isingTerms(problem), 1);
+  return { svg: Q.renderCircuitSVG(stats.ops, 3, Q.schedule(stats.ops, 3)), gates: stats.total, depth: stats.depth };
+}
+
 /* JSON cannot write NaN or the infinities, so the test spells them out
  * (to_json in tests/validation_cases.py) and this turns them back. */
 function revive(key, value) {
@@ -172,6 +180,7 @@ process.stdin.on("end", () => {
     }),
     cases: cases.map(runCase),
     checks: Object.fromEntries(checks.map((c) => [c.name, runCheck(c)])),
+    figures: { triangle: triangleFigure() },
     texts: texts.map(runText),
   }));
 });

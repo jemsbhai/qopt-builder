@@ -18,8 +18,11 @@ def read(name: str) -> str:
         return handle.read()
 
 
-def test_the_site_has_its_two_pages():
-    assert PAGES == ["demo.html", "index.html"]
+APP_PAGES = ["demo.html", "index.html"]  # the two pages that compute; the rest are text
+
+
+def test_the_site_has_its_pages():
+    assert PAGES == ["demo.html", "glossary.html", "guide.html", "index.html", "learn.html"]
 
 
 @pytest.mark.parametrize("page", PAGES)
@@ -69,6 +72,8 @@ def test_the_two_pages_link_to_each_other():
     demo = read("demo.js")
     assert 'const HOME = "index.html";' in demo
     assert demo.count('"Back to the main page", HOME') == 2
+    assert 'const PRIMER = "learn.html";' in demo and demo.count('"Read the primer", PRIMER') == 2
+    assert 'href="learn.html"' in read("index.html")
 
 
 def test_pages_read_their_inputs_through_the_tested_parsers():
@@ -87,7 +92,7 @@ def test_pages_read_their_inputs_through_the_tested_parsers():
 def test_guided_demo_uses_the_tested_modules():
     """demo.html loads the same four modules as the main page, the ones
     the parity test runs, and its own script computes no results."""
-    for page in PAGES:
+    for page in APP_PAGES:
         scripts = re.findall(r"<script src=\"([^\"]+)\"", read(page))
         assert scripts[:4] == ["qubo.js", "qaoa.js", "circuit.js", "presets.js"], page
     demo = read("demo.js")

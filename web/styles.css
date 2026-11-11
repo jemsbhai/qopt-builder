@@ -59,6 +59,16 @@ nav a:hover { color: var(--text); }
 .watch-btn:hover { background: #67e8f9; text-decoration: none; }
 .context { color: var(--muted); font-size: 14px; }
 
+/* pointers from the builder to the learning pages */
+.learn-line { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+a.help {
+  display: inline-block; margin-left: 6px; width: 18px; height: 18px; line-height: 16px;
+  text-align: center; font-size: 12px; font-weight: 600;
+  color: var(--muted); border: 1px solid var(--line); border-radius: 50%;
+  vertical-align: 1px;
+}
+a.help:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
