@@ -60,6 +60,17 @@ def test_deployment_is_a_static_folder():
     assert not os.path.exists(os.path.join(ROOT, "package.json"))
 
 
+def test_the_two_pages_link_to_each_other():
+    """The main page offers the guided demo, and the guided demo offers
+    the way back: the brand in its header, a link in its controls, and a
+    link on its title and end cards, which cover the other two."""
+    assert 'href="demo.html' in read("index.html")
+    assert read("demo.html").count('href="index.html"') == 2
+    demo = read("demo.js")
+    assert 'const HOME = "index.html";' in demo
+    assert demo.count('"Back to the main page", HOME') == 2
+
+
 def test_pages_read_their_inputs_through_the_tested_parsers():
     """app.js does no parsing of its own: what is typed into the page goes
     through the functions that tests/test_web_parity.py pins, and so

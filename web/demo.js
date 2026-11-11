@@ -118,6 +118,11 @@
     window.setTimeout(() => {
       if (run !== clock.run) return;
       caption.textContent = text;
+      // a caption too long for its two lines is set smaller, never cut off
+      caption.style.fontSize = "";
+      for (let size = 16; size >= 12 && caption.scrollHeight > caption.clientHeight + 1; size--) {
+        caption.style.fontSize = size + "px";
+      }
       caption.classList.remove("fade");
     }, 170);
   }
@@ -135,6 +140,17 @@
     const panel = $(id);
     panel.classList.remove("idle");
     panel.classList.add("now");
+  }
+
+  /* The way back to the main page: the brand in the header and a link in
+   * the controls (demo.html), and a link on the title and end cards,
+   * which cover both while they are up. */
+  const HOME = "index.html";
+
+  function anchor(parent, label, href) {
+    const link = html("a", null, label, parent);
+    link.href = href;
+    return link;
   }
 
   function showCard(build) {
@@ -325,9 +341,11 @@
       html("p", null, "Describe an optimisation problem. Get the circuit, the reasoning behind it, " +
         "and a certified answer to check the quantum result against.", box);
       if (!auto) {
-        const button = html("button", null, "Play the guided demo", box);
+        const actions = html("div", "actions", null, box);
+        const button = html("button", null, "Play the guided demo", actions);
         button.type = "button";
         button.addEventListener("click", () => setPaused(false));
+        anchor(actions, "Back to the main page", HOME);
       }
     });
     say("");
@@ -366,9 +384,17 @@
     }, linear);
     for (const line of S.edges) G.edgeEls[edgeKey(line.i, line.j)].style.strokeDasharray = "none";
     await sleep(1200);
-    for (let k = 1; k < sentences.length; k += 2) {
-      say((sentences[k] + (sentences[k + 1] || "")).trim());
-      await sleep(3400);
+    // the rest of the description, one caption at a time: sentences share
+    // a caption only while it stays short enough to take in at once
+    const captions = [];
+    for (const sentence of sentences.slice(1)) {
+      const last = captions.length - 1;
+      if (last >= 0 && (captions[last] + sentence).trim().length <= 120) captions[last] += sentence;
+      else captions.push(sentence);
+    }
+    for (const line of captions) {
+      say(line.trim());
+      await sleep(clamp(1400 + 22 * line.trim().length, 2400, 4600)); // longer text stays up longer
     }
   }
 
@@ -952,11 +978,13 @@
         : ["Recommended with reasons.", "Certified classically.", "Built gate by gate."];
       lines.forEach((line) => html("div", null, line, headline));
       const links = html("div", "links", null, box);
-      html("div", null, "qopt-builder.vercel.app", links);
-      html("div", null, "github.com/jemsbhai/qopt-builder", links);
-      const again = html("button", null, "Play again", box);
+      anchor(html("div", null, null, links), "qopt-builder.vercel.app", HOME);
+      anchor(html("div", null, null, links), "github.com/jemsbhai/qopt-builder", "https://github.com/jemsbhai/qopt-builder");
+      const actions = html("div", "actions", null, box);
+      const again = html("button", null, "Play again", actions);
       again.type = "button";
       again.addEventListener("click", () => start(true));
+      anchor(actions, "Back to the main page", HOME);
     });
     say("");
   }

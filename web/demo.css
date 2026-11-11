@@ -69,7 +69,8 @@ body {
   border-bottom: 1px solid var(--line);
   padding-bottom: 8px;
 }
-.brand { font-family: var(--mono); font-weight: 700; font-size: 17px; color: var(--accent); }
+.brand { font-family: var(--mono); font-weight: 700; font-size: 17px; color: var(--accent); text-decoration: none; }
+a.brand:hover { text-decoration: underline; }
 .title { font-size: 19px; font-weight: 600; letter-spacing: 0.01em; }
 
 .stages {
@@ -263,7 +264,7 @@ svg text.mono { font-family: var(--mono); }
 #caption { margin: 0; flex: 1; font-size: 17px; line-height: 1.3; color: var(--text); transition: opacity 0.25s; max-height: 46px; overflow: hidden; }
 #caption.fade { opacity: 0; }
 #controls { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-#controls button, #controls select, #controls input {
+#controls button, #controls select, #controls input, #controls a {
   font: inherit;
   color: var(--text);
   background: var(--panel-2);
@@ -272,12 +273,14 @@ svg text.mono { font-family: var(--mono); }
   padding: 6px 10px;
 }
 #controls button { cursor: pointer; }
-#controls button:hover { border-color: var(--accent); }
-#controls button:focus-visible, #controls select:focus-visible, #controls input:focus-visible, .card button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#controls a { text-decoration: none; white-space: nowrap; }
+#controls button:hover, #controls a:hover { border-color: var(--accent); }
+#controls button:focus-visible, #controls select:focus-visible, #controls input:focus-visible, .card button:focus-visible,
+a.brand:focus-visible, #controls a:focus-visible, .card a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 #controls #play { background: var(--accent); color: #06222a; border-color: var(--accent); font-weight: 700; min-width: 74px; }
 #controls input { width: 62px; }
 #controls select#preset { max-width: 190px; }
-body.clean #controls, body.clean .card button { display: none; }
+body.clean #controls, body.clean .card .actions { display: none; }
 body.no-captions #caption { visibility: hidden; }
 
 /* ------------------------------------------------- overlays and flights */
@@ -303,8 +306,12 @@ body.no-captions #caption { visibility: hidden; }
 .card h1 { margin: 0; font-size: 58px; line-height: 1.1; font-weight: 700; letter-spacing: -0.01em; max-width: 1000px; }
 .card p { margin: 22px 0 0; font-size: 24px; line-height: 1.4; color: var(--soft); max-width: 900px; }
 .card .links { margin-top: 30px; font-family: var(--mono); font-size: 20px; color: var(--accent); line-height: 1.7; }
+.card .links a { color: inherit; text-decoration: none; }
+.card .links a:hover { text-decoration: underline; }
+.card .actions { margin-top: 34px; display: flex; align-items: center; gap: 26px; }
+.card .actions a { font-size: 19px; color: var(--soft); }
+.card .actions a:hover { color: var(--text); }
 .card button {
-  margin-top: 34px;
   font: inherit;
   font-size: 20px;
   font-weight: 700;
