@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command line: the Quantum Optimisation Circuit Builder</title>
+<meta name="description" content="How to use the Quantum Optimisation Circuit Builder from a terminal: run a problem from a file, read the report, get the results as JSON, package a circuit for quantum hardware, and call the same functions from Python.">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="index.html">qopt&#8209;builder</a>
+    <nav aria-label="Site">
+      <a href="index.html#app">Builder</a>
+      <a href="demo.html">Guided demo</a>
+      <a href="learn.html">Primer</a>
+      <a href="glossary.html">Glossary</a>
+      <a href="guide.html">User guide</a>
+      <a href="cli.html" aria-current="page">Command line</a>
+      <a href="hardware.html">Hardware</a>
+      <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap doc">
+  <nav class="toc" aria-label="On this page">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#setup">Setting up</a></li>
+      <li><a href="#first-run">A first run</a></li>
+      <li><a href="#problem-files">Your own problem</a></li>
+      <li><a href="#output">Reading the report</a></li>
+      <li><a href="#options">Options of run</a></li>
+      <li><a href="#json">The report as data</a></li>
+      <li><a href="#package">Packaging for hardware</a></li>
+      <li><a href="#presets">The presets</a></li>
+      <li><a href="#errors">Errors and exit status</a></li>
+      <li><a href="#python">From Python</a></li>
+    </ol>
+    <div class="pages">
+      <h2>Learn</h2>
+      <ol>
+        <li><a href="learn.html">Primer</a></li>
+        <li><a href="glossary.html">Glossary</a></li>
+        <li><a href="guide.html">User guide</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="hardware.html">Hardware</a></li>
+      </ol>
+    </div>
+  </nav>
+
+  <article class="doc-body">
+    <h1>The command line</h1>
+    <p class="lede">The builder as a program you run from a terminal. It does what <a href="index.html#app">the page</a> does, on problems read from files, with no limit on their size, and it can hand the result to a script.</p>
+    <p>If the words are new, the <a href="learn.html">primer</a> explains them, and the <a href="guide.html">user guide</a> explains each result on the page. This page assumes you can open a terminal and run Python.</p>
+
+    <h2 id="setup">Setting up</h2>
+    <p>The command line is part of the Python package in the <a href="https://github.com/jemsbhai/qopt-builder">repository</a>. Get the repository, install what it needs, and run the commands from the repository's own folder:</p>
+    <pre>git clone https://github.com/jemsbhai/qopt-builder
+cd qopt-builder
+pip install -r requirements.txt</pre>
+    <p>Check that it runs:</p>
+    <pre class="term" data-run="--version"><span class="cmd">python -m qopt_builder --version</span>
+qopt-builder 0.1.0</pre>
+    <p>Every command starts with <code>python -m qopt_builder</code>, followed by one of three words: <code>run</code>, <code>package</code> or <code>presets</code>. Add <code>--help</code> after any of them to see its options.</p>
+
+    <h2 id="first-run">A first run</h2>
+    <p>The package carries the same preset problems as the page. Run the first of them, the demo graph:</p>
+    <pre class="term" data-run="run --preset demo"><span class="cmd">python -m qopt_builder run --preset demo</span>
+Problem: Demo graph: weighted MaxCut, 6 nodes (preset demo)
+Coupling density: 0.53 (8 of 15 pairs)
+Recommendation: exact+qaoa, p = 3
+ - n=6 &lt;= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.53 is high: deeper QAOA (p=3) earns its depth on dense graphs.
+Certified optimum: -8.000 at x = [0 1 0 0 1 0]
+As a cut: weight 8.000
+QAOA circuit: 6 qubits, depth 19, 48 gates (6 H, 24 RZZ, 18 RX), 6 free parameters
+Angle scan: best expected cost -7.308 over 200 samples (seed 20261110)
+Gap to the certified optimum: 0.692</pre>
+    <p>That is the whole pipeline: the recommendation with its reasons, the <a class="term" href="glossary.html#term-certified-optimum">certified optimum</a>, the circuit, and a first look at how close the circuit gets. <a href="#output">Reading the report</a> goes through it line by line.</p>
+
+    <h2 id="problem-files">Your own problem</h2>
+    <p>A problem is a plain text file in one of two forms. They are the forms the page's text boxes take, so anything you typed there can be saved to a file and used here, and the user guide's sections on <a href="guide.html#edges">edge lists</a> and <a href="guide.html#matrix">matrices</a> apply word for word.</p>
+
+    <h3 id="edges-file">A graph, for MaxCut</h3>
+    <p>One edge per line: two node numbers and, if you want one, a weight. This file is the demo graph:</p>
+    <div class="file"><div class="name">graph.txt</div><pre data-file="graph.txt"># two triangles joined by two edges
+0 1
+0 2
+1 2
+1 3 2
+2 4
+3 4
+3 5
+4 5 2</pre></div>
+    <pre class="term" data-run="run --edges graph.txt"><span class="cmd">python -m qopt_builder run --edges graph.txt</span>
+Problem: MaxCut on 6 nodes, 8 edges (graph.txt)
+Coupling density: 0.53 (8 of 15 pairs)
+Recommendation: exact+qaoa, p = 3
+ - n=6 &lt;= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.53 is high: deeper QAOA (p=3) earns its depth on dense graphs.
+Certified optimum: -8.000 at x = [0 1 0 0 1 0]
+As a cut: weight 8.000
+QAOA circuit: 6 qubits, depth 19, 48 gates (6 H, 24 RZZ, 18 RX), 6 free parameters
+Angle scan: best expected cost -7.308 over 200 samples (seed 20261110)
+Gap to the certified optimum: 0.692</pre>
+    <p>The report is the one above, because it is the same problem. Only the first line differs: it names the file.</p>
+    <p>The graph has one more node than the largest number in the file. If your graph ends with nodes that have no edges at all, say how many nodes there are with <code>--nodes</code>.</p>
+
+    <h3 id="matrix-file">Any other problem, as a QUBO matrix</h3>
+    <p>One row of the matrix per line. The cost of an assignment x is x<sup>T</sup>Qx plus an offset, and the builder looks for the lowest cost. The offset is given on the command line:</p>
+    <div class="file"><div class="name">matrix.txt</div><pre data-file="matrix.txt">-1  2  0
+ 0 -1  2
+ 0  0 -1</pre></div>
+    <pre class="term" data-run="run --qubo matrix.txt --offset 1"><span class="cmd">python -m qopt_builder run --qubo matrix.txt --offset 1</span>
+Problem: QUBO on 3 variables, offset 1 (matrix.txt)
+Coupling density: 0.67 (2 of 3 pairs)
+Recommendation: exact+qaoa, p = 3
+ - n=3 &lt;= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.67 is high: deeper QAOA (p=3) earns its depth on dense graphs.
+Certified optimum: -1.000 at x = [1 0 1]
+QAOA circuit: 3 qubits, depth 13, 21 gates (3 H, 3 RZ, 6 RZZ, 9 RX), 6 free parameters
+Angle scan: best expected cost -0.212 over 200 samples (seed 20261110)
+Gap to the certified optimum: 0.788</pre>
+
+    <h3 id="stdin">From another program</h3>
+    <p>Give <code>-</code> as the file name and the problem is read from standard input, so another program can write it straight in:</p>
+    <pre>python make_graph.py | python -m qopt_builder run --edges -</pre>
+    <p>Here <code>make_graph.py</code> stands for any program of yours that prints an edge list.</p>
+
+    <h2 id="output">Reading the report</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Line</th><th>What it says</th></tr></thead>
+      <tbody>
+        <tr><td class="keep"><code>Problem</code></td><td>What was read and where from: the number of nodes and edges of a graph, or the number of variables of a matrix.</td></tr>
+        <tr><td class="keep"><code>Coupling density</code></td><td>The share of pairs of variables that appear together in the cost. For a graph, the share of pairs of nodes joined by an edge. See <a href="guide.html#problem">the problem card</a>.</td></tr>
+        <tr><td class="keep"><code>Recommendation</code></td><td>What the builder decided, and the number of <a class="term" href="glossary.html#term-layer">layers</a> p. The indented lines under it are its reasons. See <a href="guide.html#recommendation">the recommendation card</a>.</td></tr>
+        <tr><td class="keep"><code>Certified optimum</code></td><td>The lowest cost there is, found by checking every assignment, and the assignment that reaches it, variable 0 first. Computed up to <span data-fact="exact-limit">24</span> variables. For a graph, the next line gives the same answer as the weight of the cut.</td></tr>
+        <tr><td class="keep"><code>QAOA circuit</code></td><td>The size of the circuit that was built: qubits, <a class="term" href="glossary.html#term-depth">depth</a>, gates by kind, and the angles still to be chosen. See <a href="guide.html#circuit">the circuit card</a>.</td></tr>
+        <tr><td class="keep"><code>Angle scan</code></td><td>The circuit is simulated at <span data-fact="scan-samples">200</span> random settings of its angles, and this is the best <a class="term" href="glossary.html#term-expected-cost">expected cost</a> among them. Simulated up to <span data-fact="simulation-limit">14</span> variables.</td></tr>
+        <tr><td class="keep"><code>Gap</code></td><td>How far that best expected cost is above the certified optimum. Zero would mean the circuit gives a best answer every time.</td></tr>
+      </tbody>
+    </table></div>
+    <p>The page goes one step further than the scan: it refines the best setting it found. The command line reports the scan as it is, which is why the page and the command line show different expected costs for the same problem. The user guide has <a href="guide.html#q-scan-differs">the details</a>.</p>
+
+    <h2 id="options">Options of run</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Option</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td class="keep"><code>--edges FILE</code></td><td>The problem: a graph, as an edge list.</td></tr>
+        <tr><td class="keep"><code>--qubo FILE</code></td><td>The problem: a QUBO matrix.</td></tr>
+        <tr><td class="keep"><code>--preset NAME</code></td><td>The problem: one of <a href="#presets">the presets</a>. Exactly one of these three is needed.</td></tr>
+        <tr><td class="keep"><code>--nodes N</code></td><td>With <code>--edges</code>: the number of nodes, when the last ones have no edges.</td></tr>
+        <tr><td class="keep"><code>--offset X</code></td><td>With <code>--qubo</code>: a constant added to every cost.</td></tr>
+        <tr><td class="keep"><code>--budget QUBITS</code></td><td>The number of qubits your machine has. A problem with more variables than that is <a class="term" href="glossary.html#term-refusal">refused</a>.</td></tr>
+        <tr><td class="keep"><code>--layers P</code></td><td>Build this many layers instead of the recommended number. The report says that you did.</td></tr>
+        <tr><td class="keep"><code>--samples N</code></td><td>How many settings the scan tries.</td></tr>
+        <tr><td class="keep"><code>--seed S</code></td><td>The seed of the scan's random settings. The same seed gives the same report.</td></tr>
+        <tr><td class="keep"><code>--no-scan</code></td><td>Build the circuit and do not simulate it.</td></tr>
+        <tr><td class="keep"><code>--json</code></td><td>Print the report as JSON.</td></tr>
+        <tr><td class="keep"><code>--draw</code></td><td>Also print a drawing of the circuit, made by Qiskit.</td></tr>
+      </tbody>
+    </table></div>
+    <p>A <a class="term" href="glossary.html#term-budget">qubit budget</a> that is too small stops the run before anything is built:</p>
+    <pre class="term" data-run="run --preset demo --budget 4" data-exit="1"><span class="cmd">python -m qopt_builder run --preset demo --budget 4</span>
+Problem: Demo graph: weighted MaxCut, 6 nodes (preset demo)
+Coupling density: 0.53 (8 of 15 pairs)
+Recommendation: none
+ - n=6 &lt;= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - n=6 exceeds the qubit budget of 4: no full-width circuit fits; the builder will refuse rather than silently truncate.
+Refused: no circuit built.</pre>
+
+    <h2 id="json">The report as data</h2>
+    <p>With <code>--json</code> the same report is printed as one JSON object, for a script to read. Here it is for the graph file, without the scan:</p>
+    <pre class="term" data-run="run --edges graph.txt --json --no-scan"><span class="cmd">python -m qopt_builder run --edges graph.txt --json --no-scan</span>
+{
+  "problem": {
+    "kind": "maxcut",
+    "source": "graph.txt",
+    "n": 6,
+    "couplings": 8,
+    "pairs": 15,
+    "density": 0.5333333333333333,
+    "offset": 0.0
+  },
+  "recommendation": {
+    "algorithm": "exact+qaoa",
+    "params": {
+      "p": 3,
+      "also_build": "qaoa"
+    },
+    "rationale": [
+      "n=6 &lt;= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.",
+      "coupling density 0.53 is high: deeper QAOA (p=3) earns its depth on dense graphs."
+    ]
+  },
+  "refused": false,
+  "exact": {
+    "value": -8.0,
+    "x": [
+      0,
+      1,
+      0,
+      0,
+      1,
+      0
+    ]
+  },
+  "circuit": {
+    "p": 3,
+    "recommended_p": 3,
+    "qubits": 6,
+    "depth": 19,
+    "gates": 48,
+    "counts": {
+      "h": 6,
+      "rzz": 24,
+      "rx": 18
+    },
+    "parameters": 6
+  },
+  "scan": null,
+  "notes": [
+    "angle scan not run: switched off"
+  ]
+}</pre>
+    <p>With the scan left on, <code>scan</code> holds its best expected cost, the angles that gave it (<code>gammas</code> and <code>betas</code>), the number of samples, the seed, and the gap. After a refusal, <code>refused</code> is true and the parts that were not computed are <code>null</code>. <code>notes</code> says in words what was left out and why.</p>
+
+    <h2 id="package">Packaging for hardware</h2>
+    <p><code>package</code> takes the same options as <code>run</code>, prints the same report, and then writes a <a class="term" href="glossary.html#term-hardware-package">hardware package</a>: a folder with the problem, the circuit with its angles filled in, and a script that runs the circuit on a simulator or on an IBM quantum computer.</p>
+    <pre class="term" data-run="package --preset demo --out demo-package"><span class="cmd">python -m qopt_builder package --preset demo --out demo-package</span>
+Problem: Demo graph: weighted MaxCut, 6 nodes (preset demo)
+Coupling density: 0.53 (8 of 15 pairs)
+Recommendation: exact+qaoa, p = 3
+ - n=6 &lt;= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.53 is high: deeper QAOA (p=3) earns its depth on dense graphs.
+Certified optimum: -8.000 at x = [0 1 0 0 1 0]
+As a cut: weight 8.000
+QAOA circuit: 6 qubits, depth 19, 48 gates (6 H, 24 RZZ, 18 RX), 6 free parameters
+Angle scan: best expected cost -7.308 over 200 samples (seed 20261110)
+Gap to the certified optimum: 0.692
+Hardware package written: demo-package (README.txt, problem.json, circuit.qasm, run_on_ibm.py, requirements.txt)
+Start with README.txt in that folder: step 1 runs the circuit on a simulator.</pre>
+    <p><a href="hardware.html">Running on hardware</a> explains what is in the folder and how to use it. The options that <code>package</code> adds:</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Option</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td class="keep"><code>--out PATH</code></td><td>Where to write. A name ending in <code>.zip</code> gives one zip archive; any other name gives a folder. Without it the folder is <code>qopt-package</code>.</td></tr>
+        <tr><td class="keep"><code>--gammas ANGLES</code><br><code>--betas ANGLES</code></td><td>The angles to put in the circuit, one of each per layer, separated by commas. Without them the package gets the best angles of the scan. A problem too large to simulate has no scan, so it needs these.</td></tr>
+        <tr><td class="keep"><code>--force</code></td><td>Write even if the folder or archive is already there.</td></tr>
+      </tbody>
+    </table></div>
+    <p><code>package</code> has no <code>--no-scan</code>, <code>--json</code> or <code>--draw</code>.</p>
+
+    <h2 id="presets">The presets</h2>
+    <pre class="term" data-run="presets"><span class="cmd">python -m qopt_builder presets</span>
+demo             Demo graph: weighted MaxCut, 6 nodes
+                 Two triangles joined by two edges, with weights 1 and 2. A triangle always
+                 leaves one of its edges uncut, so the best cut misses one weight-1 edge in
+                 each.
+tree-14          Sparse tree: MaxCut, 14 nodes
+                 A binary tree with unit weights. A tree can be two-coloured level by level, so
+                 every edge can be cut. This is the largest size the browser simulates.
+ring-10          Ring: MaxCut, 10 nodes
+                 A ring of ten nodes with unit weights. An even ring alternates sides and cuts
+                 every edge.
+weighted-8       Dense weighted graph: MaxCut, 8 nodes
+                 Sixteen weighted edges on eight nodes, more than half of all possible pairs.
+chorded-ring-24  Chorded ring: MaxCut, 24 nodes
+                 A problem at the exact-solve limit of 24 variables. Every node is joined to its
+                 neighbours one and two steps around a ring: 48 unit edges, full of triangles.
+                 Each triangle leaves an edge uncut, which bounds the cut at 36, and the pattern
+                 1100 repeated reaches it. Too large to simulate, so the builder certifies the
+                 optimum and builds the circuit only.
+vertex-cover-6   Vertex cover: QUBO, 6 variables
+                 Minimum vertex cover, a different problem on the demo graph: pick the fewest
+                 nodes that touch every edge. Each chosen node costs 1 and each uncovered edge
+                 costs 2, which puts linear terms on the diagonal and a constant offset of 16.
+                 The optimum cost is the size of the smallest cover.
+dense-qubo-6     Dense symmetric QUBO, 6 variables
+                 A matrix entered in symmetric form, with every pair of variables coupled and
+                 linear terms on the diagonal.</pre>
+    <p>They are the problems in the page's list, described in the <a href="guide.html#presets">user guide</a>.</p>
+
+    <h2 id="errors">Errors and exit status</h2>
+    <p>A problem that cannot be used is reported in one line, with the file and the line where it went wrong, and nothing else is printed:</p>
+    <div class="file"><div class="name">broken.txt</div><pre data-file="broken.txt">0 1
+1 1</pre></div>
+    <pre class="term" data-run="run --edges broken.txt" data-exit="2"><span class="cmd">python -m qopt_builder run --edges broken.txt</span>
+error: broken.txt: Line 2: an edge cannot join node 1 to itself.</pre>
+    <p>The messages are the ones the page shows. The user guide <a href="guide.html#errors">lists them</a> with what to do about each.</p>
+    <p>The exit status tells a script what happened:</p>
+    <div class="scroll"><table>
+      <thead><tr><th class="num">Status</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0</td><td>A circuit was built. For <code>package</code>, the package was written too.</td></tr>
+        <tr><td class="num">1</td><td>The builder refused the problem: it has more variables than the qubit budget.</td></tr>
+        <tr><td class="num">2</td><td>The input could not be used: a file that is missing or malformed, an option that is wrong, or a package that would replace one already there.</td></tr>
+      </tbody>
+    </table></div>
+    <p>In PowerShell the status of the last command is in <code>$LASTEXITCODE</code>. In bash it is in <code>$?</code>.</p>
+
+    <h2 id="python">From Python</h2>
+    <p>The command line is a thin layer over functions you can call yourself. The same run as a short program:</p>
+    <pre class="code" data-python="first">from qopt_builder import build_qaoa, maxcut_qubo, recommend, scan_angles
+
+problem = maxcut_qubo([(0, 1), (1, 2), (0, 2)], 3)    # a triangle
+
+choice = recommend(problem)
+print(choice.algorithm, "with p =", choice.params["p"])
+
+cost, x = problem.brute_force()
+print("certified optimum", cost, "at", [int(v) for v in x])
+
+circuit, angles = build_qaoa(problem, choice.params["p"])
+print(circuit.num_qubits, "qubits, depth", circuit.depth())
+
+scan = scan_angles(problem, choice.params["p"])
+print("best expected cost", round(scan.value, 3))</pre>
+    <p>It prints:</p>
+    <pre class="term" data-output="first">exact+qaoa with p = 3
+certified optimum -2.0 at [1, 0, 0]
+3 qubits, depth 13
+best expected cost -1.989</pre>
+    <p><code>circuit</code> is an ordinary Qiskit <code>QuantumCircuit</code>, so everything Qiskit can do with a circuit is open to you from there. <code>print(circuit.draw())</code> shows it as a drawing.</p>
+    <p>The functions, all imported from <code>qopt_builder</code>:</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Function</th><th>What it gives</th></tr></thead>
+      <tbody>
+        <tr><td class="keep"><code>maxcut_qubo(edges, n)</code></td><td>A problem from a list of edges on n nodes.</td></tr>
+        <tr><td class="keep"><code>QUBO(matrix, offset)</code></td><td>A problem from a matrix.</td></tr>
+        <tr><td class="keep"><code>parse_edge_list(text)</code><br><code>parse_matrix(text)</code></td><td>The contents of a problem file, turned into the edges or the matrix.</td></tr>
+        <tr><td class="keep"><code>recommend(problem, qubit_budget)</code></td><td>The recommendation: the algorithm, the number of layers, and the reasons.</td></tr>
+        <tr><td class="keep"><code>problem.brute_force()</code></td><td>The certified optimum: its cost and its assignment.</td></tr>
+        <tr><td class="keep"><code>build_qaoa(problem, p)</code></td><td>The circuit with p layers, and the angles it leaves open.</td></tr>
+        <tr><td class="keep"><code>scan_angles(problem, p)</code></td><td>The angle scan: the best expected cost and the angles that gave it.</td></tr>
+        <tr><td class="keep"><code>package_files(...)</code></td><td>The files of a hardware package, as text.</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="next">
+      <a href="hardware.html">Running on hardware<span>What the package holds and how to run it</span></a>
+      <a href="guide.html">User guide<span>The same results, on the page</span></a>
+      <a href="index.html#app">Open the builder<span>Try a problem in the browser</span></a>
+    </div>
+  </article>
+</main>
+</body>
+</html>

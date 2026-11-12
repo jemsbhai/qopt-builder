@@ -126,11 +126,40 @@
   function show(id, on) { $(id).hidden = !on; }
   const tick = () => new Promise((r) => setTimeout(r, 10));
 
+  /* What the last run would put into a hardware package, or null when
+   * it has no angles to package. */
+  let packageInput = null;
+
+  /* Hand the browser a file to save. */
+  function download(bytes, filename) {
+    const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  $("package-btn").addEventListener("click", () => {
+    if (!packageInput) return;
+    const status = $("package-status");
+    try {
+      download(Q.zipBytes(Q.packageFiles(packageInput)), Q.PACKAGE_NAME + ".zip");
+      status.textContent = "Saved " + Q.PACKAGE_NAME + ".zip. Unpack it and start with README.txt: step 1 runs the circuit on a simulator.";
+    } catch (err) {
+      status.textContent = "The package could not be made: " + err.message;
+    }
+  });
+
   async function run() {
     const btn = $("run"), status = $("status");
     btn.disabled = true;
     status.classList.remove("error");
-    for (const id of ["graph-card", "rec-card", "refusal-card", "exact-card", "circuit-card", "qaoa-card"]) show(id, false);
+    for (const id of ["graph-card", "rec-card", "refusal-card", "exact-card", "circuit-card", "qaoa-card", "hardware-card"]) show(id, false);
+    packageInput = null;
+    $("package-status").textContent = "";
     try {
       status.textContent = "Parsing problem...";
       await tick();
@@ -174,13 +203,14 @@
       $("rec-algo").textContent = rec.algorithm + "  (p = " + rec.params.p + ")";
       $("rec-reasons").innerHTML = rec.rationale.map((r) => "<li>" + r + "</li>").join("");
 
-      let optimum = null;
+      let optimum = null, optimalX = null;
       if (n <= Q.EXACT_CLASSICAL_LIMIT) {
         status.textContent = "Solving exactly by enumeration (2^" + n + " states)...";
         await tick();
         const t0 = performance.now();
         const bf = Q.bruteForce(problem);
         optimum = bf.value;
+        optimalX = bf.x;
         const ms = Math.max(1, Math.round(performance.now() - t0));
         show("exact-card", true);
         $("exact-line").innerHTML =
@@ -225,6 +255,18 @@
           return "<tr" + (isOpt ? ' class="optimal"' : "") + "><td>" + row.bits.join("") + "</td><td>" +
             row.prob.toFixed(4) + "</td><td>" + row.cost.toFixed(3) + "</td><td>" + (isOpt ? "optimal" : "") + "</td></tr>";
         }).join("");
+        packageInput = {
+          problem, kind: edges ? "maxcut" : "qubo", edges: edges ? edges.length : null,
+          recommendation: rec, optimum: optimalX, layers: rec.params.p,
+          gammas: refined.gammas, betas: refined.betas,
+          anglesFrom: "web page angle scan: the best of 200 random settings (seed 20261110), then refined",
+        };
+        show("hardware-card", true);
+        show("package-btn", true);
+        $("hardware-line").textContent = "This circuit, ready for a quantum computer: a zip archive holding the problem with its " +
+          "certified optimum, the circuit with the refined angles filled in, and a script that runs it through Qiskit on a " +
+          "simulator, on a simulated IBM device, or on an IBM quantum computer with your own account. The archive is made " +
+          "in your browser. The script has been tested on simulators only.";
         status.textContent = "Done.";
       } else {
         show("qaoa-card", true);
@@ -234,6 +276,10 @@
           ". In the Python package the same circuit is a Qiskit QuantumCircuit, ready to be run on a simulator or on hardware.";
         $("scan-chart").innerHTML = "";
         $("top-table").querySelector("tbody").innerHTML = "";
+        show("hardware-card", true);
+        show("package-btn", false);
+        $("hardware-line").textContent = "A hardware package needs angles, and this page finds them by simulation, which stops at " +
+          Q.SIMULATION_LIMIT + " variables. The command line packages a problem of this size with angles you supply.";
         status.textContent = "Done (simulation skipped for n > " + Q.SIMULATION_LIMIT + ").";
       }
     } catch (err) {

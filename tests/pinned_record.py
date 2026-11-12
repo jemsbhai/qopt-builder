@@ -12,3 +12,8 @@ WEB_DEMO = {
     "web-gap": "0.813",       # refined value minus the certified optimum
     "web-success": "43.8%",   # chance that one measurement is optimal, at the refined angles
 }
+
+# What web/app.js writes into a hardware package about its angles. The
+# static test checks that the page's script holds this text, and the
+# parity test packages the demo graph with it.
+PAGE_ANGLES_FROM = "web page angle scan: the best of 200 random settings (seed 20261110), then refined"

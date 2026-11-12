@@ -17,6 +17,8 @@
       <a href="#how">How it works</a>
       <a href="#validation">Validation</a>
       <a href="learn.html">Learn</a>
+      <a href="cli.html">Command line</a>
+      <a href="hardware.html">Hardware</a>
       <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
     </nav>
   </div>
@@ -32,9 +34,10 @@
       <span class="chip">Exact classical solve up to n = 24</span>
       <span class="chip">QAOA circuit factory</span>
       <span class="chip">Refuses rather than truncating over budget</span>
+      <span class="chip">Hardware package for Qiskit and IBM Quantum</span>
     </div>
     <p class="watch"><a class="watch-btn" href="demo.html?autoplay=1">Watch the guided demo</a> A short animated walkthrough: the recommendation, the exact solve, and the circuit assembled gate by gate.</p>
-    <p class="learn-line">New to quantum computing? Start with the <a href="learn.html">primer</a>, keep the <a href="glossary.html">glossary</a> to hand, and follow the <a href="guide.html">user guide</a> through a first run.</p>
+    <p class="learn-line">New to quantum computing? Start with the <a href="learn.html">primer</a>, keep the <a href="glossary.html">glossary</a> to hand, and follow the <a href="guide.html">user guide</a> through a first run. Working from a terminal? The <a href="cli.html">command line</a> page has every command. To take a circuit to a real machine, see <a href="hardware.html">running on hardware</a>.</p>
     <p class="context">Built for the Qiskit Fall Fest 2026 hackathon (DeepStation edition). By Muntaser Syed.</p>
   </section>
 
@@ -106,6 +109,13 @@
             <tbody></tbody>
           </table>
         </div>
+
+        <div id="hardware-card" class="result-card" hidden>
+          <h3>Hardware package <a class="help" href="guide.html#package" title="what the package holds and how to run it" aria-label="Help: what the package holds and how to run it">?</a></h3>
+          <p id="hardware-line" class="stats-line"></p>
+          <button id="package-btn" class="package-btn" type="button">Download the hardware package</button>
+          <p id="package-status" class="fineprint" role="status"></p>
+        </div>
       </div>
     </div>
   </section>
@@ -128,6 +138,10 @@
       <div class="step">
         <h3>Validation</h3>
         <p>For n up to 24 the exact optimum is computed by enumeration, so the QAOA expectation and its most likely outcomes are reported next to a certified answer, not next to another heuristic.</p>
+      </div>
+      <div class="step">
+        <h3>Hardware package</h3>
+        <p>The circuit, with its angles filled in, can be packaged for a quantum computer: the problem with its certified optimum, the circuit as OpenQASM, and a script that runs it through Qiskit and scores what comes back. The package has been tested on simulators only.</p>
       </div>
     </div>
   </section>
@@ -153,6 +167,8 @@
 <script src="qaoa.js"></script>
 <script src="circuit.js"></script>
 <script src="presets.js"></script>
+<script src="package-text.js"></script>
+<script src="package.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

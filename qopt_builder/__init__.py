@@ -6,7 +6,10 @@ builds the Qiskit circuit. Built for the DeepStation edition of Qiskit
 Fall Fest 2026.
 """
 
+__version__ = "0.1.0"
+
 from .build import build_qaoa
+from .package import package_files, write_folder, zip_bytes
 from .presets import PRESETS, Preset, get_preset
 from .problems import QUBO, maxcut_qubo
 from .recommend import Recommendation, recommend
@@ -18,6 +21,5 @@ __all__ = [
     "expectation", "scan_angles", "ScanResult",
     "PRESETS", "Preset", "get_preset",
     "parse_edge_list", "parse_matrix", "parse_offset",
+    "package_files", "write_folder", "zip_bytes",
 ]
-
-__version__ = "0.1.0"

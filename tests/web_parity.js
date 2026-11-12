@@ -14,7 +14,9 @@ const Q = Object.assign(
   require(path.join(web, "qubo.js")),
   require(path.join(web, "qaoa.js")),
   require(path.join(web, "circuit.js")),
-  require(path.join(web, "presets.js"))
+  require(path.join(web, "presets.js")),
+  require(path.join(web, "package-text.js")),
+  require(path.join(web, "package.js"))
 );
 
 function runCase(c) {
@@ -46,6 +48,12 @@ function runCase(c) {
     const refined = Q.refineAngles(ising, n, p, scan.best, scan.costs);
     out.scan = { p, best: scan.best, trace: Array.from(scan.trace), refined };
     out.scan.success = Q.successProbability(ising, n, p, refined.gammas, refined.betas, out.exact.value);
+    if (c.scan.package) {
+      // the package the page offers after this run: the refined angles, as app.js passes them
+      out.scan.package = packed(Object.assign({}, c.scan.package, {
+        problem, recommendation: rec, optimum: out.exact.x, layers: p, gammas: refined.gammas, betas: refined.betas,
+      }));
+    }
     out.stepped = stepped(problem, ising, p, c.scan);
     // a seed of 0 is a seed like any other, not a request for the default one
     out.seedZero = Array.from(Q.scanAngles(ising, n, 1, 3, 0).trace);
@@ -81,6 +89,24 @@ function call(c) {
   }
   if (c.call === "scan") return Q.scanAngles(ising, problem.n, c.p, c.samples, 1).trace.length;
   throw new Error("unknown call " + c.call);
+}
+
+/* A hardware package: its five files, and the archive that holds them
+ * as base64. */
+function packed(spec) {
+  const files = Q.packageFiles(spec);
+  return { files, zip: Buffer.from(Q.zipBytes(files, spec.folder, spec.when)).toString("base64") };
+}
+
+function runPackage(c) {
+  try {
+    const problem = Q.makeQUBO(c.matrix, c.offset);
+    const recommendation = Q.recommend(problem, c.budget === undefined ? null : c.budget);
+    const optimum = c.solve ? Q.bruteForce(problem).x : null;
+    return packed(Object.assign({}, c, { problem, recommendation, optimum }));
+  } catch (error) {
+    return { error: error.message };
+  }
 }
 
 /* Text as it would be typed into the page, through the page's parsers. */
@@ -160,7 +186,7 @@ let input = "";
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (chunk) => { input += chunk; });
 process.stdin.on("end", () => {
-  const { cases, checks, texts } = JSON.parse(input, revive);
+  const { cases, checks, texts, packages, numbers } = JSON.parse(input, revive);
   process.stdout.write(JSON.stringify({
     constants: {
       EXACT_CLASSICAL_LIMIT: Q.EXACT_CLASSICAL_LIMIT,
@@ -182,5 +208,12 @@ process.stdin.on("end", () => {
     checks: Object.fromEntries(checks.map((c) => [c.name, runCheck(c)])),
     figures: { triangle: triangleFigure() },
     texts: texts.map(runText),
+    packageConstants: {
+      VERSION: Q.VERSION, PACKAGE_FORMAT: Q.PACKAGE_FORMAT, PACKAGE_NAME: Q.PACKAGE_NAME, PACKAGE_FILES: Q.PACKAGE_FILES,
+    },
+    packages: Object.fromEntries(packages.map((c) => [c.name, runPackage(c)])),
+    numbers: numbers.map((x) => {
+      try { return Q.numberText(x); } catch (error) { return { error: error.message }; }
+    }),
   }));
 });

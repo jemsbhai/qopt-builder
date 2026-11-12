@@ -1,0 +1,502 @@
+#!/usr/bin/env python3
+"""Run this folder's QAOA circuit and score the results against the problem.
+
+    python run_on_ibm.py --simulate    an ideal simulator on this computer
+    python run_on_ibm.py --rehearse    a simulated copy of an IBM quantum computer
+    python run_on_ibm.py --hardware    an IBM quantum computer
+    python run_on_ibm.py --job ID      the results of a job sent earlier
+
+The folder is a hardware package made by qopt-builder. problem.json holds
+the problem, its certified optimum and the angles; circuit.qasm holds the
+circuit with those angles filled in. This script sends the circuit to
+the chosen target, reads back one assignment of the problem's variables
+per shot, works out the cost of each, and reports how close the shots
+come to the certified optimum.
+
+--simulate needs only Qiskit. --rehearse also needs qiskit-ibm-runtime
+and qiskit-aer, and no account. --hardware and --job need
+qiskit-ibm-runtime and an IBM Quantum account whose API key has been
+saved on this computer. README.txt has the steps.
+
+Exit status: 0 when a report was printed, 2 when the run could not be made
+or was stopped.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+import warnings
+from pathlib import Path
+
+FORMAT = "qopt-builder hardware package, version 1"
+HERE = Path(__file__).resolve().parent
+
+SHOTS = 1024
+# Up to this many qubits the script also works out what an ideal run of
+# the circuit would give, from its exact probabilities. It is the limit
+# of qopt-builder's own simulation.
+IDEAL_LIMIT = 14
+# A cost this close to the certified optimum counts as optimal, as it
+# does in qopt-builder's exact solver.
+OPTIMAL_TOLERANCE = 1e-9
+REHEARSAL_DEVICE = "fake_fez"
+GATES = ("h", "rz", "rzz", "rx")
+
+
+class PackageError(Exception):
+    """The run could not be made. The message is for the user."""
+
+
+# ------------------------------------------------------------ the package
+
+def load_package(folder=HERE):
+    """The package in `folder`: (the contents of problem.json, the circuit)."""
+    folder = Path(folder)
+    try:
+        with open(folder / "problem.json", encoding="utf-8") as handle:
+            package = json.load(handle)
+    except OSError as error:
+        raise PackageError(f"cannot read problem.json in {folder}: {error.strerror or error}.") from None
+    except ValueError:
+        raise PackageError("problem.json is not valid JSON.") from None
+    if not isinstance(package, dict) or package.get("format") != FORMAT:
+        raise PackageError(f"problem.json is not a {FORMAT}.")
+    circuit = load_circuit(folder / package["circuit"]["file"])
+    check(package, circuit)
+    return package, circuit
+
+
+def load_circuit(path):
+    """circuit.qasm as a Qiskit circuit.
+
+    The file defines the rzz gate itself, so that any OpenQASM 2 reader
+    accepts it. Qiskit is told to use its own RZZ gate for it.
+    """
+    try:
+        from qiskit import qasm2
+        from qiskit.circuit.library import RZZGate
+    except ImportError:
+        raise PackageError("this script needs Qiskit: pip install -r requirements.txt") from None
+    try:
+        return qasm2.load(path, custom_instructions=[qasm2.CustomInstruction("rzz", 1, 2, RZZGate)])
+    except OSError as error:
+        raise PackageError(f"cannot read {path}: {error.strerror or error}.") from None
+    except qasm2.QASM2ParseError as error:
+        raise PackageError(f"{Path(path).name} is not a circuit this script can read: {error}") from None
+
+
+def check(package, circuit) -> None:
+    """Stop if problem.json and circuit.qasm do not belong together."""
+    problem, stated = package["problem"], package["circuit"]
+    n = problem["variables"]
+    counts = circuit.count_ops()
+    found = {"qubits": circuit.num_qubits, "measurements": counts.get("measure", 0)}
+    found.update({gate: counts.get(gate, 0) for gate in GATES})
+    for name, value in found.items():
+        if stated[name] != value:
+            raise PackageError(
+                f"circuit.qasm and problem.json do not belong together: {name} is {value} in the "
+                f"circuit, but problem.json says {stated[name]}."
+            )
+    matrix = problem["matrix"]
+    if n != circuit.num_qubits or len(matrix) != n or any(len(row) != n for row in matrix):
+        raise PackageError("problem.json is damaged: the matrix and the circuit differ in size.")
+    optimum = package["certified_optimum"]
+    if optimum is not None and abs(cost(package, optimum["assignment"]) - optimum["cost"]) > OPTIMAL_TOLERANCE:
+        raise PackageError("problem.json is damaged: the certified optimum does not have the cost it states.")
+
+
+def cost(package, x) -> float:
+    """Cost of the assignment x: x^T Q x plus the offset."""
+    problem = package["problem"]
+    total = problem["offset"]
+    for i, row in enumerate(problem["matrix"]):
+        if x[i]:
+            for j, value in enumerate(row):
+                if x[j]:
+                    total += value
+    return total
+
+
+def assignment(key: str) -> list:
+    """The assignment a measured bitstring stands for.
+
+    Qiskit writes the last bit first: the rightmost character is bit
+    c[0], which holds variable x_0.
+    """
+    return [int(bit) for bit in reversed(key.replace(" ", ""))]
+
+
+def ideal(package, circuit):
+    """What an ideal run of the circuit gives, and what guessing gives.
+
+    Returns a dict, or None when the circuit is too wide to simulate
+    here. "average_cost" and "share_at_optimum" come from the circuit's
+    exact probabilities; the two "random" entries are for assignments
+    picked uniformly at random. The shares are None when the package
+    has no certified optimum.
+    """
+    n = package["problem"]["variables"]
+    if n > IDEAL_LIMIT:
+        return None
+    import numpy as np
+    from qiskit.quantum_info import Statevector
+
+    unmeasured = circuit.remove_final_measurements(inplace=False)
+    probabilities = Statevector.from_instruction(unmeasured).probabilities()
+    # table[k, i] is x_i in assignment number k, the order of the probabilities
+    table = ((np.arange(2 ** n)[:, None] >> np.arange(n)) & 1).astype(float)
+    matrix = np.array(package["problem"]["matrix"], dtype=float)
+    costs = package["problem"]["offset"] + np.einsum("ki,ij,kj->k", table, matrix, table)
+    result = {
+        "average_cost": float(probabilities @ costs), "random_average_cost": float(costs.mean()),
+        "share_at_optimum": None, "random_share_at_optimum": None,
+    }
+    optimum = package["certified_optimum"]
+    if optimum is not None:
+        optimal = costs <= optimum["cost"] + OPTIMAL_TOLERANCE
+        result["share_at_optimum"] = float(probabilities[optimal].sum())
+        result["random_share_at_optimum"] = float(optimal.mean())
+    return result
+
+
+# ------------------------------------------------------------- the targets
+
+def need(module: str, install: str):
+    """Import a module, or say what to install."""
+    import importlib
+    try:
+        return importlib.import_module(module)
+    except ImportError:
+        raise PackageError(f"this needs {install}: pip install {install}") from None
+
+
+def from_ibm(backend) -> bool:
+    return type(backend).__module__.split(".")[0] == "qiskit_ibm_runtime"
+
+
+def is_copy(backend) -> bool:
+    """True for a simulated copy of an IBM device."""
+    return type(backend).__module__.startswith("qiskit_ibm_runtime.fake_provider")
+
+
+def describe_target(backend) -> str:
+    if backend is None:
+        return "an ideal simulator on this computer"
+    name = getattr(backend, "name", None) or type(backend).__name__
+    width = getattr(backend, "num_qubits", None)
+    size = f", {width} qubits" if isinstance(width, int) else ""
+    if is_copy(backend):
+        return f"{name}{size}: a simulated copy of an IBM quantum computer, on this computer"
+    return f"{name}{size}"
+
+
+def rehearsal_backend(name=None):
+    """A simulated copy of an IBM device, by name: fake_fez, ibm_fez or fez."""
+    need("qiskit_ibm_runtime", "qiskit-ibm-runtime")
+    need("qiskit_aer", "qiskit-aer")
+    from qiskit_ibm_runtime.fake_provider import FakeProviderForBackendV2
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        provider = FakeProviderForBackendV2()
+    wanted = name or REHEARSAL_DEVICE
+    for prefix in ("fake_", "ibm_"):
+        if wanted.startswith(prefix):
+            wanted = wanted[len(prefix):]
+    copies = sorted(backend.name for backend in provider.backends())
+    if "fake_" + wanted not in copies:
+        raise PackageError(f"there is no simulated copy named {name}. The copies are: {', '.join(copies)}.")
+    return provider.backend("fake_" + wanted)
+
+
+def ibm_service():
+    """Sign in to IBM Quantum with the account saved on this computer."""
+    runtime = need("qiskit_ibm_runtime", "qiskit-ibm-runtime")
+    try:
+        return runtime.QiskitRuntimeService()
+    except Exception as error:  # no saved account, or IBM refused it
+        raise PackageError(
+            f"could not sign in to IBM Quantum: {error}\nREADME.txt says how to save your API key on this computer."
+        ) from None
+
+
+def ibm_backend(name, qubits: int):
+    """The named IBM device, or the least busy one with enough qubits."""
+    service = ibm_service()
+    try:
+        if name:
+            return service.backend(name)
+        return service.least_busy(operational=True, simulator=False, min_num_qubits=qubits)
+    except Exception as error:
+        raise PackageError(f"could not get a device from IBM Quantum: {error}") from None
+
+
+def sample(backend, circuit, shots: int, seed=None):
+    """Run the circuit `shots` times. Returns (counts, what was sent).
+
+    `backend` is None for the ideal simulator, or a Qiskit backend. An
+    IBM device, real or simulated, is run through the IBM Sampler; any
+    other backend through its own run method.
+    """
+    if backend is None:
+        from qiskit.primitives import StatevectorSampler
+
+        result = StatevectorSampler(seed=seed).run([circuit], shots=shots).result()
+        return result[0].data.c.get_counts(), {}
+
+    from qiskit.transpiler import generate_preset_pass_manager
+
+    prepared = generate_preset_pass_manager(optimization_level=3, backend=backend, seed_transpiler=seed).run(circuit)
+    sent = {"depth": prepared.depth(), "two_qubit_gates": prepared.num_nonlocal_gates()}
+    if from_ibm(backend):
+        from qiskit_ibm_runtime import SamplerV2
+
+        options = {"simulator": {"seed_simulator": seed}} if is_copy(backend) and seed is not None else None
+        job = SamplerV2(mode=backend, options=options).run([prepared], shots=shots)
+        if not is_copy(backend):
+            sent["job"] = job.job_id()
+            print(f"Job {sent['job']} sent to {backend.name}. Waiting for the results.", flush=True)
+        try:
+            counts = job.result()[0].data.c.get_counts()
+        except Exception as error:  # the job failed or was cancelled
+            raise PackageError(f"job {job.job_id()} did not return results: {error}") from None
+    else:
+        extra = {} if seed is None else {"seed_simulator": seed}
+        counts = backend.run(prepared, shots=shots, **extra).result().get_counts()
+    return counts, sent
+
+
+def earlier_job(job_id: str):
+    """The counts of a job sent earlier. Returns (counts, target text)."""
+    service = ibm_service()
+    try:
+        job = service.job(job_id)
+        counts = job.result()[0].data.c.get_counts()
+    except Exception as error:
+        raise PackageError(f"could not fetch job {job_id}: {error}") from None
+    try:
+        name = job.backend().name
+    except Exception:
+        name = "an IBM quantum computer"
+    return counts, f"{name} (job {job_id})"
+
+
+# -------------------------------------------------------------- the report
+
+def summarise(package, counts) -> dict:
+    """Score the measured bitstrings against the problem."""
+    outcomes = []
+    for key, shots in counts.items():
+        x = assignment(key)
+        if len(x) != package["problem"]["variables"]:
+            raise PackageError(f"the results do not fit the problem: got the bitstring {key!r}.")
+        outcomes.append({"x": x, "shots": int(shots), "cost": cost(package, x)})
+    if not outcomes:
+        raise PackageError("the run returned no results.")
+    outcomes.sort(key=lambda row: (-row["shots"], row["x"]))
+    total = sum(row["shots"] for row in outcomes)
+    best = min(outcomes, key=lambda row: row["cost"])  # the most frequent of the lowest cost
+    optimum = package["certified_optimum"]
+    at_optimum = None
+    if optimum is not None:
+        limit = optimum["cost"] + OPTIMAL_TOLERANCE
+        at_optimum = sum(row["shots"] for row in outcomes if row["cost"] <= limit)
+    return {
+        "shots": total,
+        "average_cost": sum(row["shots"] * row["cost"] for row in outcomes) / total,
+        "shots_at_optimum": at_optimum,
+        "best": dict(best),
+        "outcomes": outcomes,
+    }
+
+
+def bits(x) -> str:
+    return "[" + " ".join(str(v) for v in x) + "]"
+
+
+def count(number: int, thing: str) -> str:
+    return f"{number} {thing}" if number == 1 else f"{number} {thing}s"
+
+
+def report(package, target: str, summary: dict, expected, sent: dict) -> list:
+    """The lines of the report."""
+    problem, optimum = package["problem"], package["certified_optimum"]
+    maxcut = problem["kind"] == "maxcut"
+    shots, best = summary["shots"], summary["best"]
+    lines = [
+        f"Package: {problem['description']}",
+        f"Circuit: QAOA with {count(package['qaoa']['layers'], 'layer')} on {count(problem['variables'], 'qubit')}",
+        f"Target: {target}",
+    ]
+    if "depth" in sent:
+        lines.append(
+            f"Circuit as sent: depth {sent['depth']}, {count(sent['two_qubit_gates'], 'two-qubit gate')}"
+        )
+    lines += [f"Shots: {shots}", "", f"Average cost of the shots (lower is better): {summary['average_cost']:.3f}"]
+    if expected is not None:
+        lines.append(
+            f"  An ideal run of this circuit averages {expected['average_cost']:.3f}. "
+            f"Assignments picked at random average {expected['random_average_cost']:.3f}."
+        )
+    if optimum is None:
+        lines.append("This package has no certified optimum: the problem is too large to solve exactly.")
+    else:
+        share = summary["shots_at_optimum"] / shots
+        lines.append(
+            f"Shots at the certified optimum of {optimum['cost']:.3f}: "
+            f"{summary['shots_at_optimum']} of {shots} ({100 * share:.1f}%)"
+        )
+        if expected is not None:
+            lines.append(
+                f"  An ideal run gives {100 * expected['share_at_optimum']:.1f}%. "
+                f"Assignments picked at random give {100 * expected['random_share_at_optimum']:.1f}%."
+            )
+    lines.append(
+        f"Best assignment found: x = {bits(best['x'])}, cost {best['cost']:.3f}, in {count(best['shots'], 'shot')}"
+    )
+    if optimum is not None:
+        gap = best["cost"] - optimum["cost"]
+        if gap <= OPTIMAL_TOLERANCE:
+            lines.append("  It is a certified optimum.")
+        else:
+            lines.append(
+                f"  It is {gap:.3f} above the certified optimum, x = {bits(optimum['assignment'])}."
+            )
+    if maxcut:
+        lines.append(f"  As a cut: weight {-best['cost']:.3f}")
+    lines += ["", "Most frequent results"]
+    for row in summary["outcomes"][:8]:
+        optimal = optimum is not None and row["cost"] <= optimum["cost"] + OPTIMAL_TOLERANCE
+        lines.append(
+            f"  x = {bits(row['x'])}  {count(row['shots'], 'shot'):>10}  cost {row['cost']:.3f}"
+            + ("  optimal" if optimal else "")
+        )
+    return lines
+
+
+def run(backend=None, shots: int = SHOTS, seed=None, folder=HERE, out=None, counts=None, target=None) -> dict:
+    """Run the package on a backend, print the report and save the results.
+
+    `backend` is None for the ideal simulator, or any Qiskit backend
+    object: an IBM device, a simulated copy of one, or a backend from
+    another provider's Qiskit package. `out` is the file the results are
+    saved to; None picks a name in the package folder. Returns the
+    results that were saved.
+
+    `counts` and `target` are for results that already exist: with them
+    nothing is run, and the counts are scored as they are.
+    """
+    package, circuit = load_package(folder)
+    sent, label = {}, "earlier-job"
+    if counts is None:
+        target = describe_target(backend)
+        label = "simulator" if backend is None else str(getattr(backend, "name", None) or type(backend).__name__)
+        counts, sent = sample(backend, circuit, shots, seed)
+    summary = summarise(package, counts)
+    expected = ideal(package, circuit)
+    print("\n".join(report(package, target, summary, expected, sent)))
+
+    results = {
+        "package": package["problem"]["description"],
+        "target": target,
+        "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "sent": sent,
+        "ideal": expected,
+        "certified_optimum": package["certified_optimum"],
+    }
+    results.update(summary)
+    if out is None:
+        label = "".join(c if c.isalnum() or c in "-_" else "-" for c in label)
+        out = Path(folder) / f"results-{time.strftime('%Y%m%d-%H%M%S', time.gmtime())}-{label}.json"
+    try:
+        with open(out, "w", encoding="utf-8") as handle:
+            json.dump(results, handle, indent=2)
+            handle.write("\n")
+    except OSError as error:
+        raise PackageError(
+            f"the report is above, but it could not be saved to {out}: {error.strerror or error}."
+        ) from None
+    print(f"\nSaved: {out}")
+    return results
+
+
+# ----------------------------------------------------------- the arguments
+
+def whole_number(minimum: int, what: str):
+    def convert(text: str) -> int:
+        try:
+            value = int(text)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"{text!r} is not a whole number") from None
+        if value < minimum:
+            raise argparse.ArgumentTypeError(f"{what} must be {minimum} or more")
+        return value
+    return convert
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Run this package's QAOA circuit and score the results against the problem.",
+        epilog="Exit status: 0 a report was printed, 2 the run could not be made or was stopped.",
+    )
+    where = parser.add_argument_group("where to run (exactly one)").add_mutually_exclusive_group(required=True)
+    where.add_argument("--simulate", action="store_true",
+                       help="an ideal simulator on this computer; needs only Qiskit")
+    where.add_argument("--rehearse", action="store_true",
+                       help="a simulated copy of an IBM quantum computer, on this computer, noise included; "
+                            "needs qiskit-ibm-runtime and qiskit-aer, and no account")
+    where.add_argument("--hardware", action="store_true",
+                       help="an IBM quantum computer, through the IBM Quantum account saved on this computer; "
+                            "uses quantum time from your plan")
+    where.add_argument("--job", metavar="ID", help="score the results of a job sent earlier with --hardware")
+    parser.add_argument("--backend", metavar="NAME",
+                        help="with --hardware: the device to use, instead of the least busy one with enough "
+                             f"qubits. With --rehearse: the simulated copy to use (default {REHEARSAL_DEVICE})")
+    parser.add_argument("--shots", type=whole_number(1, "the number of shots"), metavar="N",
+                        help=f"how many times the circuit is run and measured (default {SHOTS})")
+    parser.add_argument("--seed", type=whole_number(0, "the seed"), metavar="S",
+                        help="makes a simulated run repeatable, and the placing of the circuit on a device")
+    parser.add_argument("--out", metavar="FILE",
+                        help="where to save the results (default: results-TIME-TARGET.json in the package folder)")
+    parser.add_argument("--package", metavar="FOLDER", default=str(HERE),
+                        help="the package folder (default: the folder this script is in)")
+    return parser
+
+
+def main(argv=None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.backend is not None and not (args.hardware or args.rehearse):
+        parser.error("--backend goes with --hardware or --rehearse")
+    if args.job is not None and (args.shots is not None or args.seed is not None):
+        parser.error("--shots and --seed go with a run, not with --job")
+    shots = SHOTS if args.shots is None else args.shots
+    try:
+        if args.job is not None:
+            load_package(args.package)  # fail on a bad package before signing in
+            counts, target = earlier_job(args.job)
+            run(folder=args.package, out=args.out, counts=counts, target=target)
+            return 0
+        backend = None
+        if args.rehearse:
+            backend = rehearsal_backend(args.backend)
+        elif args.hardware:
+            package, _ = load_package(args.package)
+            backend = ibm_backend(args.backend, package["problem"]["variables"])
+        run(backend, shots=shots, seed=args.seed, folder=args.package, out=args.out)
+        return 0
+    except PackageError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        print("\nStopped. A job that was already sent still runs: fetch its results later with --job and its id.",
+              file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

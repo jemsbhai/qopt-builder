@@ -18,6 +18,8 @@
       <a href="learn.html">Primer</a>
       <a href="glossary.html">Glossary</a>
       <a href="guide.html" aria-current="page">User guide</a>
+      <a href="cli.html">Command line</a>
+      <a href="hardware.html">Hardware</a>
       <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
     </nav>
   </div>
@@ -42,6 +44,8 @@
         <li><a href="learn.html">Primer</a></li>
         <li><a href="glossary.html">Glossary</a></li>
         <li><a href="guide.html">User guide</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="hardware.html">Hardware</a></li>
       </ol>
     </div>
   </nav>
@@ -58,7 +62,7 @@
       <li><strong>Hardware budget.</strong> Optional. Enter the number of qubits your machine has, or leave it empty.</li>
       <li>Press <strong>Run the builder</strong>. The line under the button says what the page is doing, and reports any problem with the input in red.</li>
     </ol>
-    <p>The results appear on the right as a stack of cards, in the order the builder works: the problem, the recommendation, the exact solve, the circuit, and the simulated run.</p>
+    <p>The results appear on the right as a stack of cards, in the order the builder works: the problem, the recommendation, the exact solve, the circuit, the simulated run, and the hardware package.</p>
 
     <h2 id="cards">Reading the results</h2>
     <p>The examples below are what the page shows for the demo graph, the first preset.</p>
@@ -103,6 +107,10 @@ Certified optimum <span data-fact="demo-optimum">-8.000</span>; gap after refine
     <p>The chart shows the 200 scanned values as a line, the certified optimum as a dashed line below them, and the refined value as a dot. No value can be below the dashed line.</p>
     <p>The table lists the bit strings you would measure most often at the refined angles, with the probability and the cost of each. Rows marked <code>optimal</code> are best answers. In a good run they are near the top.</p>
     <p>This card needs a full simulation, so it is filled in only up to <span data-fact="simulation-limit">14</span> variables. For a larger problem it says that no run was simulated.</p>
+
+    <h3 id="package">Hardware package</h3>
+    <p>The last card offers the circuit in a form you can take to a quantum computer. Its button saves <code>qopt-package.zip</code>, a <a class="term" href="glossary.html#term-hardware-package">hardware package</a>: the problem with its certified optimum, the circuit with the refined angles filled in, and a script that runs the circuit on a simulator, on a simulated IBM device, or on an IBM quantum computer under your own account. The archive is made in your browser, and nothing is sent anywhere.</p>
+    <p>The package needs the angles from the run above it, so the card offers a download only up to <span data-fact="simulation-limit">14</span> variables. <a href="hardware.html">Running on hardware</a> explains what is in the package and how to use it.</p>
 
     <h2 id="own-problem">Entering your own problem</h2>
 
@@ -158,6 +166,7 @@ Certified optimum <span data-fact="demo-optimum">-8.000</span>; gap after refine
       <tbody>
         <tr><td>Simulated QAOA run</td><td class="num" data-fact="simulation-limit">14</td><td>The recommendation, the certified optimum and the circuit are still produced. The run card says it was not simulated.</td></tr>
         <tr><td>Exact solve</td><td class="num" data-fact="exact-limit">24</td><td>The recommendation and the circuit are still produced. There is no certified optimum, and the recommendation says so.</td></tr>
+        <tr><td>Hardware package from this page</td><td class="num" data-fact="simulation-limit">14</td><td>The card offers no download, because the page has no angles for the circuit. The <a href="cli.html#package">command line</a> packages a larger problem with angles you give it.</td></tr>
         <tr><td>This page</td><td class="num" data-fact="page-limit">64</td><td>The page reports the size and stops. The Python package has no such limit.</td></tr>
       </tbody>
     </table></div>
@@ -209,13 +218,13 @@ Certified optimum <span data-fact="demo-optimum">-8.000</span>; gap after refine
     <h2 id="questions">Questions people ask</h2>
 
     <h3 id="q-quantum-computer">Is any of this running on a quantum computer?</h3>
-    <p>No. The circuits are run by a <a class="term" href="glossary.html#term-simulator">simulator</a> inside your browser, which is exact and has no noise. The Python package builds the same circuits as Qiskit objects, and Qiskit can run those on a simulator or on hardware.</p>
+    <p>No. The circuits are run by a <a class="term" href="glossary.html#term-simulator">simulator</a> inside your browser, which is exact and has no noise. The Python package builds the same circuits as Qiskit objects, and Qiskit can run those on a simulator or on hardware. To take a circuit to a real machine, use the <a href="#package">hardware package</a>.</p>
 
     <h3 id="q-scan-differs">Why does the page show <span data-fact="web-scan">-6.664</span> for the scan when the Python script prints <span data-fact="python-scan">-7.308</span>?</h3>
     <p>Both try 200 random settings of the angles, and they draw those settings from different random number generators: the page uses a small generator of its own, which gives the same sequence in every browser, and the Python script uses NumPy's. It is the same circuit scored at different angles. Everything that does not depend on the random draw is identical in the two, and the project's tests check that: they hand the page's 200 settings to Qiskit and require the same 200 values back, to nine decimal places.</p>
 
     <h3 id="q-other-depth">The recommendation says p = 3. Can I build another depth?</h3>
-    <p>Not on the page, which builds what it recommends. In the Python package you can: <code>build_qaoa(problem, p)</code> takes any number of layers.</p>
+    <p>Not on the page, which builds what it recommends. In the Python package you can: <code>build_qaoa(problem, p)</code> takes any number of layers, and so does <code>--layers</code> on the <a href="cli.html#options">command line</a>.</p>
 
     <h3 id="q-no-run">Why is the QAOA run card empty for my problem?</h3>
     <p>The run needs a full simulation, which the page does up to <span data-fact="simulation-limit">14</span> variables. Larger problems still get the recommendation, the circuit, and the certified optimum if they have 24 variables or fewer.</p>
@@ -227,6 +236,8 @@ Certified optimum <span data-fact="demo-optimum">-8.000</span>; gap after refine
       <a href="index.html#app">Open the builder<span>Try it on the demo graph</span></a>
       <a href="learn.html">Primer<span>The ideas behind it</span></a>
       <a href="glossary.html">Glossary<span>Every term on this site</span></a>
+      <a href="cli.html">Command line<span>The builder from a terminal</span></a>
+      <a href="hardware.html">Running on hardware<span>From a circuit to a quantum computer</span></a>
     </div>
   </article>
 </main>

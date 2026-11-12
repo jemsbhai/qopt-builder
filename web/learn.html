@@ -18,6 +18,8 @@
       <a href="learn.html" aria-current="page">Primer</a>
       <a href="glossary.html">Glossary</a>
       <a href="guide.html">User guide</a>
+      <a href="cli.html">Command line</a>
+      <a href="hardware.html">Hardware</a>
       <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
     </nav>
   </div>
@@ -42,6 +44,8 @@
         <li><a href="learn.html">Primer</a></li>
         <li><a href="glossary.html">Glossary</a></li>
         <li><a href="guide.html">User guide</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="hardware.html">Hardware</a></li>
       </ol>
     </div>
   </nav>
@@ -219,6 +223,7 @@
       <li>Most machines can only apply a two-qubit gate between neighbouring qubits. A circuit has to be rewritten to fit the machine, a step called <a class="term" href="glossary.html#term-transpilation">transpilation</a>, and that usually makes it longer.</li>
     </ul>
     <p>The result on hardware is therefore worse than the simulated one, by an amount that depends on the machine and on the depth and two-qubit gate count of the circuit. Those two numbers are on every circuit card for that reason.</p>
+    <p>The builder can take a circuit up to that line. It writes a <a class="term" href="glossary.html#term-hardware-package">hardware package</a>: the circuit with its angles filled in, in a form a quantum computer accepts, and a script that runs it and scores what comes back against the certified optimum. The script can also rehearse the run on a simulated copy of a real device, which shows the effects in the list above before any real machine is involved. <a href="hardware.html">Running on hardware</a> has the steps.</p>
     <p>One more thing should be said plainly. QAOA is a <a class="term" href="glossary.html#term-heuristic">heuristic</a>. There is no proof that it beats the best classical methods on these problems, and this tool does not claim that it does. What the tool offers is a clear path from a problem to a circuit, with the reasoning shown and the answer checked wherever a check is possible.</p>
 
     <h2 id="next">Where to go next</h2>
@@ -226,6 +231,8 @@
       <li>The <a href="guide.html">user guide</a> walks through a first run of the builder and explains each card.</li>
       <li>The <a href="demo.html">guided demo</a> plays the whole pipeline as an animation, with the circuit assembled gate by gate.</li>
       <li>The <a href="glossary.html">glossary</a> has every term used on this site.</li>
+      <li>The <a href="cli.html">command line</a> page runs the builder from a terminal, on problems of any size.</li>
+      <li><a href="hardware.html">Running on hardware</a> takes a circuit from the builder to a quantum computer.</li>
     </ul>
     <p>To go further than this site does:</p>
     <ul>

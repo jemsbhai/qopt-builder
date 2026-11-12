@@ -18,6 +18,8 @@
       <a href="learn.html">Primer</a>
       <a href="glossary.html" aria-current="page">Glossary</a>
       <a href="guide.html">User guide</a>
+      <a href="cli.html">Command line</a>
+      <a href="hardware.html">Hardware</a>
       <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
     </nav>
   </div>
@@ -30,6 +32,8 @@
       <li><a href="learn.html">Primer</a></li>
       <li><a href="glossary.html">Glossary</a></li>
       <li><a href="guide.html">User guide</a></li>
+      <li><a href="cli.html">Command line</a></li>
+      <li><a href="hardware.html">Hardware</a></li>
     </ol>
   </nav>
 
@@ -48,6 +52,7 @@
       <li><a href="#letter-g">G</a></li>
       <li><a href="#letter-h">H</a></li>
       <li><a href="#letter-i">I</a></li>
+      <li><a href="#letter-j">J</a></li>
       <li><a href="#letter-l">L</a></li>
       <li><a href="#letter-m">M</a></li>
       <li><a href="#letter-n">N</a></li>
@@ -77,6 +82,10 @@
 
     <h2 id="letter-b">B</h2>
     <dl class="glossary">
+      <dt id="term-backend">Backend</dt>
+      <dd>A machine that runs circuits, or a simulator standing in for one. In <a href="#term-qiskit">Qiskit</a> a backend is an object that knows which gates its machine has and which of its qubits are connected.</dd>
+      <dd class="tool"><b>In this tool:</b> the script in a <a href="#term-hardware-package">hardware package</a> runs its circuit on the backend you choose.</dd>
+
       <dt id="term-bit-string">Bit string</dt>
       <dd>A sequence of 0s and 1s. Measuring n qubits returns a bit string of length n, which this tool reads as an <a href="#term-assignment">assignment</a>.</dd>
     </dl>
@@ -89,6 +98,10 @@
 
       <dt id="term-circuit">Circuit</dt>
       <dd>A list of <a href="#term-gate">gates</a> applied to a set of qubits in order, ending in a measurement. The quantum counterpart of a program.</dd>
+
+      <dt id="term-command-line">Command line</dt>
+      <dd>A way of running a program by typing its name and its options into a terminal, instead of clicking in a window.</dd>
+      <dd class="tool"><b>In this tool:</b> <code>python -m qopt_builder</code> does what the page does, from a terminal. See <a href="cli.html">the command line</a>.</dd>
 
       <dt id="term-cost">Cost</dt>
       <dd>The number a problem attaches to each assignment. The builder always minimises, so lower is better. For MaxCut the cost is minus the weight of the cut, which turns "cut as much as possible" into "make the cost as low as possible".</dd>
@@ -145,6 +158,9 @@
       <dt id="term-h">H gate (Hadamard)</dt>
       <dd>A one-qubit gate that takes a qubit that is definitely 0 to an equal <a href="#term-superposition">superposition</a> of 0 and 1. QAOA applies it to every qubit first, so that all assignments start out equally likely.</dd>
 
+      <dt id="term-hardware-package">Hardware package</dt>
+      <dd class="tool"><b>In this tool:</b> a folder of five files that holds one problem, its circuit with the angles filled in, and a script that runs the circuit on a simulator or on a quantum computer and scores the results against the certified optimum. See <a href="hardware.html">running on hardware</a>.</dd>
+
       <dt id="term-heuristic">Heuristic</dt>
       <dd>A method that often gives good answers but comes with no guarantee of how good. QAOA is a heuristic.</dd>
     </dl>
@@ -156,6 +172,13 @@
 
       <dt id="term-ising">Ising form</dt>
       <dd>The same problem written with variables that are +1 or -1 instead of 0 or 1. It is the form in which a cost turns directly into gates: each term with one variable becomes an RZ gate, and each term with two becomes an RZZ gate.</dd>
+    </dl>
+
+    <h2 id="letter-j">J</h2>
+    <dl class="glossary">
+      <dt id="term-job">Job</dt>
+      <dd>One request sent to a quantum computer: a circuit and a number of <a href="#term-shot">shots</a>. A job waits in a queue, runs, and keeps an id by which its results can be fetched later.</dd>
+      <dd class="tool"><b>In this tool:</b> the script in a hardware package sends one job per run.</dd>
     </dl>
 
     <h2 id="letter-l">L</h2>
@@ -184,7 +207,7 @@
 
       <dt id="term-noise">Noise</dt>
       <dd>The errors of real quantum hardware: gates that are slightly off, qubits that lose their state, and measurements that misread. Noise grows with the depth of a circuit and with its number of two-qubit gates.</dd>
-      <dd class="tool"><b>In this tool:</b> the simulations on this site have none.</dd>
+      <dd class="tool"><b>In this tool:</b> the simulations on this site have none. A hardware package can rehearse a run on a simulated device that has it.</dd>
     </dl>
 
     <h2 id="letter-o">O</h2>
@@ -192,6 +215,10 @@
       <dt id="term-offset">Offset</dt>
       <dd>A constant added to every cost. It does not change which assignment is best, only the value reported.</dd>
       <dd class="tool"><b>In this tool:</b> the vertex cover preset has an offset of <span data-fact="vertex-cover-offset">16</span>.</dd>
+
+      <dt id="term-openqasm">OpenQASM</dt>
+      <dd>A plain text format for writing down a quantum circuit gate by gate, which most quantum software can read.</dd>
+      <dd class="tool"><b>In this tool:</b> a hardware package holds its circuit as an OpenQASM 2 file.</dd>
 
       <dt id="term-optimum">Optimum</dt>
       <dd>The lowest cost any assignment has, and an assignment that has it. A problem can have several optimal assignments.</dd>
@@ -215,6 +242,10 @@
     <dl class="glossary">
       <dt id="term-qaoa">QAOA</dt>
       <dd>The quantum approximate optimisation algorithm: a way of building a circuit from an optimisation problem so that measuring it tends to return low-cost assignments. Introduced by Farhi, Goldstone and Gutmann in 2014.</dd>
+
+      <dt id="term-qiskit">Qiskit</dt>
+      <dd>IBM's open-source Python library for building, simulating and running quantum circuits.</dd>
+      <dd class="tool"><b>In this tool:</b> the Python package builds its circuits as Qiskit objects, and the script in a hardware package runs them through Qiskit.</dd>
 
       <dt id="term-qubit">Qubit</dt>
       <dd>The basic unit of a quantum computer. Like a bit it gives 0 or 1 when read, but before that its state is described by <a href="#term-amplitude">amplitudes</a> for both answers.</dd>
@@ -256,6 +287,7 @@
 
       <dt id="term-shot">Shot</dt>
       <dd>One run of a circuit ending in one measurement, giving one bit string. Estimating probabilities on real hardware takes many shots.</dd>
+      <dd class="tool"><b>In this tool:</b> the script in a hardware package runs <span data-fact="package-shots">1024</span> shots unless told otherwise.</dd>
 
       <dt id="term-simulator">Simulator</dt>
       <dd>An ordinary program that computes what a quantum circuit would do, by keeping every amplitude in memory. Exact and free of noise, but its cost doubles with every qubit.</dd>
@@ -272,6 +304,7 @@
     <dl class="glossary">
       <dt id="term-transpilation">Transpilation</dt>
       <dd>Rewriting a circuit so that a particular machine can run it: using only the gates the machine has, and only between qubits that are connected on it. This usually adds gates and depth.</dd>
+      <dd class="tool"><b>In this tool:</b> the script in a hardware package has Qiskit do it before a circuit goes to a device, and reports the depth and the number of two-qubit gates of the result.</dd>
     </dl>
 
     <h2 id="letter-v">V</h2>

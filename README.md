@@ -14,6 +14,10 @@ Guided demo, an animated walkthrough made for watching or recording: **https://q
 
 New to quantum computing? The site carries a [primer](https://qopt-builder.vercel.app/learn.html), a [glossary](https://qopt-builder.vercel.app/glossary.html) and a [user guide](https://qopt-builder.vercel.app/guide.html), written for programmers who have not met the subject before. Every number those pages quote is recomputed from the code by `tests/test_docs.py`.
 
+Two more pages are for people who want to use the tool, not only watch it: [the command line](https://qopt-builder.vercel.app/cli.html), with every command and what it prints, and [running on hardware](https://qopt-builder.vercel.app/hardware.html). The commands shown on those pages are run by the tests, which require the output printed there.
+
+**Hardware package.** The builder page and the command line can both write a hardware package for a problem: the problem with its certified optimum, the QAOA circuit as OpenQASM 2 with its angles filled in, and a script that runs the circuit through Qiskit and scores the measured answers against the optimum. The script has three targets: an ideal simulator, a simulated copy of an IBM device (through IBM's own client, noise included), and an IBM quantum computer under your own account. The package has been tested on simulators only, including simulated copies of IBM devices. It has not been run on a real quantum computer, and the site says so wherever the package is offered.
+
 The full pipeline runs in the browser: problem intake (MaxCut edge lists or a raw QUBO matrix, plus presets), the recommendation engine with its rationales, the exact solve, the QAOA circuit diagram with gate counts and depth, and a statevector QAOA run (200-point angle scan plus Nelder-Mead refinement) scored against the certified optimum. The JavaScript in `web/` is a dependency-free port of the Python package below.
 
 ## Verified results (demo graph, 6 nodes, 8 weighted edges)
@@ -51,6 +55,19 @@ python -m qopt_builder run --help                # every option
 
 The exit status is 0 when a circuit was built, 1 when the builder refused the problem, and 2 when the input could not be used.
 
+A hardware package for a problem, and a first run of it on a simulator:
+
+```bash
+python -m qopt_builder package --preset demo --out demo-package   # or --edges / --qubo, as for run
+cd demo-package
+pip install -r requirements.txt
+python run_on_ibm.py --simulate    # an ideal simulator; needs no account
+python run_on_ibm.py --rehearse    # a simulated copy of an IBM device, noise included; needs no account
+python run_on_ibm.py --hardware    # an IBM quantum computer, with the IBM Quantum account saved on your computer
+```
+
+The page writes the same package as a download. For the same problem and angles the files in the two are identical byte for byte, which `tests/test_web_parity.py` checks.
+
 Browser demo locally, with any static file server:
 
 ```bash
@@ -67,16 +84,19 @@ The repository root carries a `vercel.json` that deploys `web/` as a static site
 
 ## Status
 
-Hackathon prototype (v0.1.0). The MaxCut path is complete end to end in both Python and the browser port. On the roadmap: a VQE ansatz family in the factory, hardware-aware transpilation targets (coupling map and native gates), problem templates beyond MaxCut (TSP, scheduling, portfolio), and a variational optimiser in the Python demo in place of the angle scan (the browser demo already refines).
+Hackathon prototype (v0.1.0). The MaxCut path is complete end to end in both Python and the browser port. The hardware package is tested on simulators and on simulated IBM devices, and has not yet been run on a real one. On the roadmap: that run, a VQE ansatz family in the factory, a recommendation that takes the target device's coupling map and native gates into account (today the circuit is fitted to the device when the package is run), problem templates beyond MaxCut (TSP, scheduling, portfolio), and a variational optimiser in the Python demo in place of the angle scan (the browser demo already refines).
 
 ## Layout
 
 - `qopt_builder/problems.py`: QUBO model, MaxCut conversion, exact solver for small n.
 - `qopt_builder/recommend.py`: the recommendation rules and their rationales.
 - `qopt_builder/build.py`: QAOA circuit construction.
+- `qopt_builder/simulate.py`: statevector scoring and the angle scan.
+- `qopt_builder/cli.py`, `qopt_builder/textio.py`: the command line and its two file formats.
+- `qopt_builder/package.py`, `qopt_builder/run_on_ibm.py`: the hardware package and the script it carries.
 - `run_demo.py`: the end-to-end MaxCut demo.
 - `tests/test_demo.py`: smoke tests pinning the verified results above.
-- `web/`: the browser demo (static site; `qubo.js`, `qaoa.js`, `circuit.js`, `app.js`).
+- `web/`: the site (static files, nothing to build): the builder page and its modules (`qubo.js`, `qaoa.js`, `circuit.js`, `package.js`, `app.js`), the guided demo, and the text pages.
 
 ## License
 

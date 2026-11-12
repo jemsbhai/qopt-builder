@@ -3,7 +3,6 @@
  * readable width, and a list of the page's sections beside it on a wide
  * screen. */
 
-.header-row { flex-wrap: wrap; gap: 6px 0; }
 a.brand { color: var(--text); }
 a.brand:hover { text-decoration: none; color: var(--accent); }
 nav a[aria-current="page"] { color: var(--text); }
@@ -68,6 +67,19 @@ pre {
   color: var(--text);
 }
 pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+/* what is typed into a terminal, and what comes back */
+pre.term { color: #c3cad8; }
+pre.term .cmd { color: var(--accent); }
+pre.term .cmd::before { content: "> "; color: var(--muted); }
+/* a file the reader is asked to make: its name, then its contents */
+.file { margin: 0 0 16px; }
+.file .name {
+  display: inline-block; padding: 3px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; color: var(--muted);
+  background: var(--panel); border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0;
+}
+.file pre { margin: 0; border-top-left-radius: 0; }
 
 /* a word explained in the glossary */
 a.term { color: inherit; border-bottom: 1px dotted var(--muted); }

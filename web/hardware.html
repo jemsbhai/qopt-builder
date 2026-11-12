@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Running on hardware: the Quantum Optimisation Circuit Builder</title>
+<meta name="description" content="How to take a circuit from the Quantum Optimisation Circuit Builder to a quantum computer: the hardware package, what is in it, and how to run it on a simulator, on a simulated IBM device, and on an IBM quantum computer with your own account.">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="index.html">qopt&#8209;builder</a>
+    <nav aria-label="Site">
+      <a href="index.html#app">Builder</a>
+      <a href="demo.html">Guided demo</a>
+      <a href="learn.html">Primer</a>
+      <a href="glossary.html">Glossary</a>
+      <a href="guide.html">User guide</a>
+      <a href="cli.html">Command line</a>
+      <a href="hardware.html" aria-current="page">Hardware</a>
+      <a href="https://github.com/jemsbhai/qopt-builder">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap doc">
+  <nav class="toc" aria-label="On this page">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#what">What a hardware package is</a></li>
+      <li><a href="#make">Making one</a></li>
+      <li><a href="#inside">What is in it</a></li>
+      <li><a href="#simulate">Step 1: a simulator</a></li>
+      <li><a href="#rehearse">Step 2: a simulated IBM device</a></li>
+      <li><a href="#hardware">Step 3: an IBM quantum computer</a></li>
+      <li><a href="#report">Reading the report</a></li>
+      <li><a href="#others">Other machines</a></li>
+      <li><a href="#tested">What has been tested</a></li>
+      <li><a href="#questions">Questions people ask</a></li>
+    </ol>
+    <div class="pages">
+      <h2>Learn</h2>
+      <ol>
+        <li><a href="learn.html">Primer</a></li>
+        <li><a href="glossary.html">Glossary</a></li>
+        <li><a href="guide.html">User guide</a></li>
+        <li><a href="cli.html">Command line</a></li>
+        <li><a href="hardware.html">Hardware</a></li>
+      </ol>
+    </div>
+  </nav>
+
+  <article class="doc-body">
+    <h1>Running on hardware</h1>
+    <p class="lede">Everything else on this site runs on a <a class="term" href="glossary.html#term-simulator">simulator</a>. This page is about the one step that leaves it: taking a circuit the builder made to a real quantum computer.</p>
+
+    <div class="here">
+      <p><b>Read this first.</b> The hardware package has been tested on simulators only, including simulated copies of IBM devices. It has not been run on a real quantum computer. <a href="#tested">What has been tested</a> says exactly where the line is.</p>
+    </div>
+
+    <h2 id="what">What a hardware package is</h2>
+    <p>The builder does not send anything to a quantum computer, and it could not: this site is a set of plain pages that holds no account and no key. What it does is write a <a class="term" href="glossary.html#term-hardware-package">hardware package</a>, a folder of five small text files that you run yourself, with your own account, when you choose to.</p>
+    <p>The package holds one problem and the circuit built for it, with its <a class="term" href="glossary.html#term-angles">angles</a> already filled in, and a script that:</p>
+    <ol>
+      <li>sends the circuit to the target you pick: a simulator, a simulated copy of an IBM device, or an IBM quantum computer;</li>
+      <li>reads back the measurements, one answer to the problem per <a class="term" href="glossary.html#term-shot">shot</a>;</li>
+      <li>works out the <a class="term" href="glossary.html#term-cost">cost</a> of each answer and reports how close the machine came to the <a class="term" href="glossary.html#term-certified-optimum">certified optimum</a>.</li>
+    </ol>
+    <p>The third step is what the builder is for. A quantum computer returns bit strings and no verdict. Because the builder has already solved the problem exactly, the script can say how many of the shots were best answers.</p>
+
+    <h2 id="make">Making one</h2>
+    <h3 id="from-page">From the page</h3>
+    <p>Run a problem on <a href="index.html#app">the builder</a>. The last card, <strong>Hardware package</strong>, has a button that saves <code>qopt-package.zip</code>. Unpack it. The archive is put together in your browser, and the angles in it are the refined angles of the run on screen.</p>
+    <p>The page finds angles by simulation, which it does up to <span data-fact="simulation-limit">14</span> variables. For a larger problem the card says so and offers no download.</p>
+
+    <h3 id="from-cli">From the command line</h3>
+    <pre class="term" data-run="package --preset demo --out demo-package.zip"><span class="cmd">python -m qopt_builder package --preset demo --out demo-package.zip</span>
+Problem: Demo graph: weighted MaxCut, 6 nodes (preset demo)
+Coupling density: 0.53 (8 of 15 pairs)
+Recommendation: exact+qaoa, p = 3
+ - n=6 &lt;= 24: an exact classical solve is cheap and certifies the quantum result; recommending exact with QAOA built alongside for comparison.
+ - coupling density 0.53 is high: deeper QAOA (p=3) earns its depth on dense graphs.
+Certified optimum: -8.000 at x = [0 1 0 0 1 0]
+As a cut: weight 8.000
+QAOA circuit: 6 qubits, depth 19, 48 gates (6 H, 24 RZZ, 18 RX), 6 free parameters
+Angle scan: best expected cost -7.308 over 200 samples (seed 20261110)
+Gap to the certified optimum: 0.692
+Hardware package written: demo-package.zip (README.txt, problem.json, circuit.qasm, run_on_ibm.py, requirements.txt)
+Unpack it and start with README.txt: step 1 runs the circuit on a simulator.</pre>
+    <p>The name after <code>--out</code> decides the form: a name ending in <code>.zip</code> gives an archive, any other name gives a folder. The problem can come from a file of your own, and every option of <code>run</code> works here too. <a href="cli.html#package">The command line page</a> has the list.</p>
+
+    <h3 id="same-package">One package, two ways to make it</h3>
+    <p>For the same problem and the same angles, the page and the command line write the same files, byte for byte. The project's tests hold them to that.</p>
+    <p>Left to themselves they pick different angles, because the page refines the angles it scans and the command line does not. For the demo graph the command line's angles reach an expected cost of <span data-fact="python-scan">-7.308</span> and the page's reach <span data-fact="web-refined">-7.187</span>. To package the page's angles from the command line, or angles from anywhere else, give them with <code>--gammas</code> and <code>--betas</code>. A problem too large to simulate has to be packaged that way, because neither the page nor the command line can choose angles for it.</p>
+
+    <h2 id="inside">What is in it</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>File</th><th>What it holds</th></tr></thead>
+      <tbody>
+        <tr><td class="keep"><code>README.txt</code></td><td>The steps on this page, in short.</td></tr>
+        <tr><td class="keep"><code>problem.json</code></td><td>The problem as a matrix, its certified optimum, the recommendation with its reasons, the angles, and the size of the circuit.</td></tr>
+        <tr><td class="keep"><code>circuit.qasm</code></td><td>The circuit, with a measurement of every qubit at the end.</td></tr>
+        <tr><td class="keep"><code>run_on_ibm.py</code></td><td>The script that runs the circuit and scores the results.</td></tr>
+        <tr><td class="keep"><code>requirements.txt</code></td><td>The Python packages the script needs.</td></tr>
+      </tbody>
+    </table></div>
+    <p>The circuit is written in <a class="term" href="glossary.html#term-openqasm">OpenQASM</a> 2, a plain text format that most quantum software reads. This is how the file for the demo graph starts:</p>
+    <pre data-excerpt="circuit.qasm">// QAOA circuit made by qopt-builder 0.1.0
+// Problem: MaxCut on 6 nodes, 8 edges
+// 3 layers, angles filled in; problem.json lists them
+// Qubit q[i] stands for variable x_i and is measured into bit c[i]
+OPENQASM 2.0;
+include "qelib1.inc";
+gate rzz(theta) a,b { cx a,b; rz(theta) b; cx a,b; }
+qreg q[6];
+creg c[6];
+h q[0];
+h q[1];
+h q[2];
+h q[3];
+h q[4];
+h q[5];
+// layer 1 of 3: cost
+rzz(0.3518925494180574) q[0],q[1];
+...</pre>
+    <p>After the opening lines come the gates in order, and at the end a measurement of each qubit. Qubit <code>q[i]</code> stands for variable x<sub>i</sub> of the problem. The angles are plain numbers by now: this circuit has nothing left to choose.</p>
+    <p>The answer the results will be measured against is in <code>problem.json</code>:</p>
+    <pre data-excerpt="problem.json">  "certified_optimum": {
+    "cost": -8.0,
+    "assignment": [0, 1, 0, 0, 1, 0]
+  },</pre>
+
+    <h2 id="simulate">Step 1: a simulator</h2>
+    <p>Start here. It needs no account, and it shows that the package works on your computer before anything else is involved.</p>
+    <pre>cd demo-package
+pip install -r requirements.txt
+python run_on_ibm.py --simulate</pre>
+    <p>The circuit runs on an ideal simulator, <span data-fact="package-shots">1024</span> shots, and the script prints its report. This one is from a run of the package made above:</p>
+    <pre class="term" data-example="simulate"><span class="cmd">python run_on_ibm.py --simulate --seed 1 --out results.json</span>
+Package: MaxCut on 6 nodes, 8 edges
+Circuit: QAOA with 3 layers on 6 qubits
+Target: an ideal simulator on this computer
+Shots: 1024
+
+Average cost of the shots (lower is better): -7.340
+  An ideal run of this circuit averages <span data-fact="python-scan">-7.308</span>. Assignments picked at random average <span data-fact="demo-mean">-5.000</span>.
+Shots at the certified optimum of -8.000: 558 of 1024 (54.5%)
+  An ideal run gives <span data-fact="python-ideal-share">53.9%</span>. Assignments picked at random give <span data-fact="chance-start">9.4%</span>.
+Best assignment found: x = [1 0 0 1 1 0], cost -8.000, in 113 shots
+  It is a certified optimum.
+  As a cut: weight 8.000
+
+Most frequent results
+  x = [1 0 0 1 1 0]   113 shots  cost -8.000  optimal
+  x = [0 1 1 0 0 1]    99 shots  cost -8.000  optimal
+  x = [1 0 1 1 0 1]    97 shots  cost -8.000  optimal
+  x = [0 1 0 0 1 0]    92 shots  cost -8.000  optimal
+  x = [0 0 1 1 0 1]    80 shots  cost -8.000  optimal
+  x = [1 1 0 0 1 0]    77 shots  cost -8.000  optimal
+  x = [1 1 0 0 1 1]    48 shots  cost -7.000
+  x = [0 1 0 0 0 1]    44 shots  cost -7.000
+
+Saved: results.json</pre>
+    <p>The shots are drawn at random, so the numbers that count shots change from run to run. Add <code>--seed</code> and a number, as above, to make a run repeatable. <a href="#report">Reading the report</a> explains each line.</p>
+
+    <h2 id="rehearse">Step 2: a simulated IBM device</h2>
+    <p>The second step is a rehearsal of the real thing. It still needs no account and uses no quantum time.</p>
+    <pre>python run_on_ibm.py --rehearse</pre>
+    <p>Two things happen that did not happen in step 1.</p>
+    <p><strong>The circuit is rewritten for a real machine.</strong> An IBM device has its own small set of gates, and can apply a two-qubit gate only between qubits that are wired together. Qiskit rewrites the circuit to fit, a step called <a class="term" href="glossary.html#term-transpilation">transpilation</a>, and the result is longer than what the builder made. The report has a line for it, <code>Circuit as sent</code>.</p>
+    <p><strong>The run has <a class="term" href="glossary.html#term-noise">noise</a>.</strong> The target is a copy of an IBM device that IBM ships with its software: the layout of a real machine and a record of its error rates, simulated on your computer. The copy used is <code><span data-fact="rehearsal-device">fake_fez</span></code> unless you name another, for example <code>--backend fake_torino</code>.</p>
+    <p>A rehearsal of the same package:</p>
+    <pre class="term" data-example="rehearse"><span class="cmd">python run_on_ibm.py --rehearse --seed 1 --out rehearsal.json</span>
+Package: MaxCut on 6 nodes, 8 edges
+Circuit: QAOA with 3 layers on 6 qubits
+Target: fake_fez, 156 qubits: a simulated copy of an IBM quantum computer, on this computer
+Circuit as sent: depth 199, 79 two-qubit gates
+Shots: 1024
+
+Average cost of the shots (lower is better): -6.931
+  An ideal run of this circuit averages <span data-fact="python-scan">-7.308</span>. Assignments picked at random average <span data-fact="demo-mean">-5.000</span>.
+Shots at the certified optimum of -8.000: 483 of 1024 (47.2%)
+  An ideal run gives <span data-fact="python-ideal-share">53.9%</span>. Assignments picked at random give <span data-fact="chance-start">9.4%</span>.
+Best assignment found: x = [1 0 1 1 0 1], cost -8.000, in 97 shots
+  It is a certified optimum.
+  As a cut: weight 8.000
+
+Most frequent results
+  x = [1 0 1 1 0 1]    97 shots  cost -8.000  optimal
+  x = [0 1 1 0 0 1]    94 shots  cost -8.000  optimal
+  x = [0 1 0 0 1 0]    91 shots  cost -8.000  optimal
+  x = [1 0 0 1 1 0]    78 shots  cost -8.000  optimal
+  x = [1 1 0 0 1 0]    69 shots  cost -8.000  optimal
+  x = [0 0 1 1 0 1]    54 shots  cost -8.000  optimal
+  x = [0 1 0 0 0 1]    35 shots  cost -7.000
+  x = [1 0 1 1 1 0]    34 shots  cost -7.000
+
+Saved: rehearsal.json</pre>
+    <p>Compare it with step 1. The circuit the builder made has <span data-fact="demo-rzz">24</span> two-qubit gates. The one sent to this device has more than three times as many, and the share of shots that reach the optimum has dropped below what an ideal run gives. That gap is the cost of real hardware, and the reason the builder reports depth and gate counts for every circuit.</p>
+    <p>IBM's <a href="https://quantum.cloud.ibm.com/docs/en/guides/local-testing-mode">guide to this way of testing</a> points out that the simulated noise covers only part of what a real device does, so a real run is likely to be noisier than its rehearsal.</p>
+
+    <h2 id="hardware">Step 3: an IBM quantum computer</h2>
+    <h3 id="account">An account and a key</h3>
+    <p>You need an account on <a href="https://quantum.cloud.ibm.com">IBM Quantum Platform</a>. IBM's <a href="https://quantum.cloud.ibm.com/docs/guides/plans-overview">plans page</a> describes a free Open Plan; when this page was written, on 11 November 2026, it allowed up to 10 minutes of quantum time in every 28 days. Check what your plan allows before a run.</p>
+    <p>The account gives you an API key. Save it on your computer once, from Python:</p>
+    <pre>from qiskit_ibm_runtime import QiskitRuntimeService
+
+QiskitRuntimeService.save_account(token="YOUR-API-KEY")</pre>
+    <p>IBM's instructions for this step, with the options it has, are in <a href="https://quantum.cloud.ibm.com/docs/en/guides/save-credentials">Save your login credentials</a>. The key is stored in a file in your home folder. Treat it as a password: do not put it in a script, and do not share it.</p>
+
+    <h3 id="run-hardware">The run</h3>
+    <pre>python run_on_ibm.py --hardware</pre>
+    <p>The script signs in with the saved key, asks IBM for the least busy device that has enough qubits, rewrites the circuit for that device, and sends one job of <span data-fact="package-shots">1024</span> shots. It prints the id of the job, waits for the results, and prints the same report as before.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Option</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td class="keep"><code>--backend NAME</code></td><td>Use the device with this name instead of the least busy one.</td></tr>
+        <tr><td class="keep"><code>--shots N</code></td><td>Run the circuit N times instead of <span data-fact="package-shots">1024</span>. More shots use more quantum time.</td></tr>
+        <tr><td class="keep"><code>--job ID</code></td><td>Do not run anything. Fetch the results of a job sent earlier, and score them.</td></tr>
+        <tr><td class="keep"><code>--seed S</code></td><td>Make the placing of the circuit on the device repeatable.</td></tr>
+        <tr><td class="keep"><code>--out FILE</code></td><td>Where to save the results. Without it they go into the package folder, in a file named after the time and the device.</td></tr>
+      </tbody>
+    </table></div>
+    <p>A job can wait in a queue for a long time. If you stop the script while it waits, the job is not lost: it still runs, and <code>--job</code> with the id that was printed fetches its results later.</p>
+    <p>There is no report from a real machine on this page, because this package has not been run on one. The rehearsal in step 2 is the nearest thing to a preview.</p>
+
+    <h2 id="report">Reading the report</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Line</th><th>What it says</th></tr></thead>
+      <tbody>
+        <tr><td class="keep"><code>Package</code>, <code>Circuit</code></td><td>The problem and the circuit, as the builder described them.</td></tr>
+        <tr><td class="keep"><code>Target</code></td><td>Where the circuit ran.</td></tr>
+        <tr><td class="keep"><code>Circuit as sent</code></td><td>The depth and the number of two-qubit gates after the circuit was rewritten for the device. Not shown for the ideal simulator, which runs the circuit as it is.</td></tr>
+        <tr><td class="keep"><code>Shots</code></td><td>How many times the circuit was run and measured.</td></tr>
+        <tr><td class="keep"><code>Average cost of the shots</code></td><td>The cost of every measured answer, averaged. Lower is better. It estimates the circuit's <a class="term" href="glossary.html#term-expected-cost">expected cost</a>.</td></tr>
+        <tr><td class="keep"><code>Shots at the certified optimum</code></td><td>How many shots gave a best possible answer.</td></tr>
+        <tr><td class="keep"><code>Best assignment found</code></td><td>The lowest-cost answer among the shots, variable 0 first, and whether it is a certified optimum. For a graph, the next line gives it as the weight of a cut.</td></tr>
+        <tr><td class="keep"><code>Most frequent results</code></td><td>The eight answers measured most often, with their costs.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Two of the lines come with a comparison, printed just under them: what an ideal run of the same circuit gives, worked out exactly, and what picking assignments at random gives. They are the two ends to judge a run against. For the demo graph, a random assignment is a best answer <span data-fact="chance-start">9.4%</span> of the time, and an ideal run of the command line's circuit <span data-fact="python-ideal-share">53.9%</span> of the time. The comparisons are printed for problems of up to <span data-fact="simulation-limit">14</span> variables.</p>
+    <p>A problem of more than <span data-fact="exact-limit">24</span> variables has no certified optimum. Its report says so, and gives the average cost and the best answer found without a verdict on them.</p>
+    <p>Every run also saves its results as a JSON file, with the count of every answer that was measured.</p>
+
+    <h2 id="others">Other machines</h2>
+    <p>The circuit file is plain OpenQASM 2 and does not depend on IBM. Many makers of quantum computers publish a package that makes their machines usable from Qiskit. With such a package, make its backend object and hand it to the script from Python:</p>
+    <pre>import run_on_ibm
+
+backend = ...    # the machine, from the maker's own Qiskit package
+run_on_ibm.run(backend, shots=1024)</pre>
+    <p>The script rewrites the circuit for that machine, runs it through the machine's own <code>run</code> method, and prints the same report. This path has been tested with the generic simulated device that comes with Qiskit, and with no machine of another maker.</p>
+
+    <h2 id="tested">What has been tested</h2>
+    <p>Tested, with qiskit <span data-fact="tested-qiskit">2.6.2</span>, qiskit-ibm-runtime <span data-fact="tested-runtime">0.52.0</span> and qiskit-aer <span data-fact="tested-aer">0.18.2</span>:</p>
+    <ul>
+      <li>The circuit file. Qiskit reads it back, and the result is compared gate for gate with the circuit the builder makes.</li>
+      <li>The script on Qiskit's ideal simulator.</li>
+      <li>The script on a generic simulated device with limited connections, which is the path for <a href="#others">other machines</a>.</li>
+      <li>The script on simulated copies of two IBM devices, fake_fez and fake_torino, through IBM's own software. This is step 2.</li>
+      <li>The reading of the results. One test problem has a best answer that reads differently backwards, so that a slip in the order of the bits would show. Every target above finds it the right way round.</li>
+      <li>The page and the command line against each other: the same problem and angles must give the same five files, byte for byte, and the same archive when it is stamped with the same time.</li>
+    </ul>
+    <p>Not tested:</p>
+    <ul>
+      <li>A run on a real quantum computer.</li>
+      <li>The three things the script asks of IBM's service: signing in with a saved key, getting a device, and fetching an earlier job. They are written to IBM's documentation as it stood in November 2026. With no key saved, the sign-in stops with IBM's own message that no account was found, and that is as far as it has been taken.</li>
+    </ul>
+    <p>If you run a package on hardware, the results file it saves is the evidence. The project would like to hear how it went, through the <a href="https://github.com/jemsbhai/qopt-builder">repository</a>.</p>
+
+    <h2 id="questions">Questions people ask</h2>
+
+    <h3 id="q-sent">Is my problem sent anywhere when I download a package?</h3>
+    <p>No. The page builds the archive in your browser and hands it to you as a file. Nothing leaves your computer until you run the script with <code>--hardware</code>, and then it goes from your computer to IBM under your account.</p>
+
+    <h3 id="q-no-account">Can I use the package without an IBM account?</h3>
+    <p>Yes. Steps 1 and 2 need no account.</p>
+
+    <h3 id="q-fixed-angles">Why are the angles fixed in the package?</h3>
+    <p>Finding good angles takes many runs of the circuit, and time on a quantum computer is scarce. The builder finds the angles by simulation, where runs are free, so that one job on the machine is enough. The price is that the builder can only choose angles for circuits small enough to simulate. For a larger problem you bring your own angles.</p>
+
+    <h3 id="q-bit-order">Qiskit prints bit strings backwards. Does the report?</h3>
+    <p>No. Qiskit writes the last measured bit first. The script turns each result round, so an assignment in the report reads variable 0 first, as it does everywhere else in the builder.</p>
+
+    <h3 id="q-worse">The rehearsal is worse than the simulation. Is something wrong?</h3>
+    <p>No, that is what noise does. The longer the circuit as sent, the further the result falls from the ideal one. A problem with fewer couplings, or fewer layers, gives a shorter circuit: <code>--layers</code> on the command line builds any number you ask for.</p>
+
+    <div class="next">
+      <a href="index.html#app">Open the builder<span>Run a problem and download its package</span></a>
+      <a href="cli.html">Command line<span>Package a problem from a terminal</span></a>
+      <a href="learn.html#hardware">Primer<span>Simulators and real hardware</span></a>
+    </div>
+  </article>
+</main>
+</body>
+</html>

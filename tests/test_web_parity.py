@@ -11,6 +11,10 @@ comparison: both ports get the inputs in tests/validation_cases.py and
 must turn each away in the same words. The page's own text parsers,
 which have no Python counterpart, are pinned here as well.
 
+The hardware package is compared byte for byte: both ports are given
+the same problems and angles and must write the same five files and the
+same zip archive (web/package.js against qopt_builder/package.py).
+
 The angle scan is the one stage that is not shared: the browser draws
 its angles from its own seeded generator. For that stage the test
 regenerates the browser's angle stream and checks that Qiskit, fed the
@@ -19,10 +23,13 @@ same angles, reproduces every scanned value.
 Skipped when Node.js is not installed.
 """
 
+import base64
 import json
 import math
 import os
+import random
 import shutil
+import struct
 import subprocess
 from itertools import combinations
 
@@ -30,13 +37,16 @@ import numpy as np
 import pytest
 from qiskit.quantum_info import Statevector
 
-from qopt_builder import PRESETS, QUBO, build_qaoa, expectation, maxcut_qubo, recommend
+import qopt_builder
+from qopt_builder import PRESETS, QUBO, build_qaoa, expectation, maxcut_qubo, package_files, recommend, run_on_ibm
+from qopt_builder import write_folder, zip_bytes
+from qopt_builder.package import FILES, FORMAT, PACKAGE_NAME, number_text
 from qopt_builder.presets import DEMO_EDGES
 from qopt_builder.problems import SYMMETRY_TOLERANCE, TIE_TOLERANCE, ZERO_TOLERANCE
 from qopt_builder.recommend import EXACT_CLASSICAL_LIMIT
 from qopt_builder.simulate import SCAN_SAMPLES, SCAN_SEED, SIMULATION_LIMIT
 from page_text_cases import PAGE_LIMIT, TEXTS
-from pinned_record import WEB_DEMO
+from pinned_record import PAGE_ANGLES_FROM, WEB_DEMO
 from validation_cases import ACCEPTED, REJECTED, to_json
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -150,16 +160,122 @@ def names(predicate=lambda case: True):
     return [case["name"] for case in CASES if predicate(case)]
 
 
+# ------------------------------------------------------- hardware packages
+
+PACKAGE_WHEN = (2026, 11, 11, 12, 34, 56)
+
+
+def package_case(name, problem, *, kind="qubo", edges=None, layers=None, gammas=None, betas=None, solve=True,
+                 folder=PACKAGE_NAME, angles_from="fixed test angles", budget=None):
+    """One problem and one set of angles, to be packaged by both ports."""
+    p = recommend(problem).params.get("p", 1) if layers is None else layers
+    return {
+        "name": name, "problem": problem, "kind": kind, "edges": edges, "layers": p,
+        "gammas": [0.3 + 0.17 * k for k in range(p)] if gammas is None else gammas,
+        "betas": [1.1 - 0.23 * k for k in range(p)] if betas is None else betas,
+        "solve": solve, "folder": folder, "angles_from": angles_from, "budget": budget,
+    }
+
+
+def build_package_cases():
+    cases = [
+        package_case(
+            f"preset-{name}", preset.build(), kind=preset.kind,
+            edges=len(preset.edges) if preset.kind == "maxcut" else None, solve=preset.n <= SIMULATION_LIMIT,
+        )
+        for name, preset in PRESETS.items()
+    ]
+    # matrices of decimals: every number in the files is one both ports must write alike
+    for n in (1, 2, 3, 5, 8):
+        for layout in ("upper", "symmetric"):
+            cases.append(package_case(f"qubo-n{n}-{layout}", random_qubo(40 * n + 1, n, layout, False)))
+    for n in (3, 6, 9):
+        cases.append(package_case(f"maxcut-n{n}", random_graph(700 + n, n), kind="maxcut", edges=7))
+    rng = np.random.default_rng(77)
+    for k in range(4):
+        problem = random_qubo(800 + k, 6, "upper", False)
+        cases.append(package_case(f"angles-{k}", problem, layers=3,
+                                  gammas=list(rng.uniform(-7, 7, 3)), betas=list(rng.uniform(-7, 7, 3))))
+    cases += [
+        package_case("another-depth", PRESETS["demo"].build(), kind="maxcut", edges=8, layers=1),
+        package_case("angles-at-the-edges", random_qubo(31, 4, "symmetric", False), layers=3,
+                     gammas=[0.0, 1e-9, -2.5e7], betas=[3e-7, 1e16, -0.0]),
+        package_case("no-terms", QUBO(np.zeros((3, 3)), offset=2.0)),
+        package_case("linear-only", QUBO(np.diag([-1.0, -2.0, 3.0, 4.0]))),
+        package_case("not-solved", random_graph(650, 12), kind="maxcut", edges=30, solve=False),
+        package_case("names-beyond-ascii", PRESETS["demo"].build(), kind="maxcut", edges=8,
+                     folder="d\u00e9mo \u91cf\u5b50", angles_from="angles from a caf\u00e9, with a \"quote\" and a \\"),
+        package_case("offset-in-the-exponent", QUBO(np.array([[1.5e-9, 2.5e17], [0.0, -3.25e-8]]), offset=6.02e23)),
+        # what neither port packages
+        package_case("refused", PRESETS["demo"].build(), kind="maxcut", edges=8, budget=4),
+        package_case("too-few-gammas", PRESETS["demo"].build(), kind="maxcut", edges=8, layers=3, gammas=[0.1, 0.2]),
+        package_case("too-many-betas", PRESETS["demo"].build(), kind="maxcut", edges=8, layers=2, betas=[0.1, 0.2, 0.3]),
+        package_case("no-layers", PRESETS["demo"].build(), kind="maxcut", edges=8, layers=0, gammas=[], betas=[]),
+        package_case("unknown-kind", PRESETS["demo"].build(), kind="graph"),
+    ]
+    return cases
+
+
+PACKAGE_CASES = {case["name"]: case for case in build_package_cases()}
+
+
+def python_package(case):
+    """What the Python package writes for a case: (files, archive), or
+    the message of the error it raises."""
+    problem = case["problem"]
+    try:
+        files = package_files(
+            problem, kind=case["kind"], edges=case["edges"],
+            recommendation=recommend(problem, case["budget"]),
+            optimum=problem.brute_force()[1] if case["solve"] else None,
+            layers=case["layers"], gammas=case["gammas"], betas=case["betas"], angles_from=case["angles_from"],
+        )
+    except ValueError as error:
+        return str(error)
+    return files, zip_bytes(files, folder=case["folder"], when=PACKAGE_WHEN)
+
+
+def awkward_numbers():
+    """Numbers to write as text: every kind of layout, the edges between
+    them, and a few thousand drawn at random from all the doubles."""
+    rng = random.Random(20261111)
+    numbers = [0.0, -0.0, 1.0, -1.0, 0.5, 0.1, 0.2, 0.1 + 0.2, 1 / 3, 2 / 3, 100.0, 123.456, 2.0 ** -13, 2.0 ** 53,
+               5e-324, 2.2250738585072014e-308, 1.7976931348623157e308, 9.999999999999999e-7, 1e-6, 1e-7,
+               9.999999999999999e15, 1e16, 999999999999999.9, 1e15, 4.35, 0.000001234, 1234567.0000001]
+    numbers += [10.0 ** k for k in range(-30, 31)] + [-(2.0 ** k) for k in range(-40, 80, 7)]
+    numbers += [rng.uniform(-10, 10) for _ in range(1000)]
+    numbers += [rng.uniform(0, 1) * 10.0 ** rng.randint(-20, 25) for _ in range(1000)]
+    while len(numbers) < 5000:
+        x = struct.unpack("<d", struct.pack("<Q", rng.getrandbits(64)))[0]
+        if math.isfinite(x):
+            numbers.append(x)
+    return numbers
+
+
+NUMBERS = awkward_numbers()
+
+
 # ------------------------------------------------------------- the web side
 
 @pytest.fixture(scope="module")
 def web():
-    """Everything the web port computes for CASES, the input checks and
-    the typed text, from one Node run."""
+    """Everything the web port computes for CASES, the input checks, the
+    typed text and the hardware packages, from one Node run."""
     payload = {
         "cases": [],
         "checks": [{"name": name, **to_json(spec)} for name, (spec, _) in {**REJECTED, **ACCEPTED}.items()],
         "texts": [spec for spec, _ in TEXTS.values()],
+        "packages": [
+            {
+                "name": name, "matrix": case["problem"].matrix.tolist(), "offset": case["problem"].offset,
+                "kind": case["kind"], "edges": case["edges"], "solve": case["solve"], "layers": case["layers"],
+                "gammas": [float(g) for g in case["gammas"]], "betas": [float(b) for b in case["betas"]],
+                "anglesFrom": case["angles_from"], "folder": case["folder"], "when": PACKAGE_WHEN,
+                **({} if case["budget"] is None else {"budget": case["budget"]}),
+            }
+            for name, case in PACKAGE_CASES.items()
+        ],
+        "numbers": NUMBERS,
     }
     for case in CASES:
         spec = {
@@ -173,7 +289,11 @@ def web():
         if case["budget"] is not None:
             spec["budget"] = case["budget"]
         if case["scan"]:
-            spec["scan"] = {"samples": SCAN_SAMPLES, "seed": SCAN_SEED}
+            spec["scan"] = {
+                "samples": SCAN_SAMPLES, "seed": SCAN_SEED,
+                "package": {"kind": "maxcut", "edges": len(DEMO_EDGES), "anglesFrom": PAGE_ANGLES_FROM,
+                            "folder": PACKAGE_NAME, "when": PACKAGE_WHEN},
+            }
         payload["cases"].append(spec)
     proc = subprocess.run(
         [NODE, os.path.join(HERE, "web_parity.js")],
@@ -439,3 +559,68 @@ def test_the_primer_shows_the_circuit_the_page_would_draw(web):
     qc, _ = build_qaoa(maxcut_qubo([(0, 1), (1, 2), (0, 2)], 3), 1)
     assert web["figures"]["triangle"]["gates"] == qc.size()
     assert web["figures"]["triangle"]["depth"] == qc.depth()
+
+
+# ------------------------------------------------------- hardware packages
+
+def test_package_constants_match(web):
+    assert web["packageConstants"] == {
+        "VERSION": qopt_builder.__version__,
+        "PACKAGE_FORMAT": FORMAT,
+        "PACKAGE_NAME": PACKAGE_NAME,
+        "PACKAGE_FILES": list(FILES),
+    }
+
+
+def test_numbers_are_written_the_same_way(web):
+    """Every number in a package goes through number_text() on one side
+    and numberText() on the other."""
+    assert len(NUMBERS) == 5000 == len(web["numbers"])
+    different = [(x, number_text(x), text) for x, text in zip(NUMBERS, web["numbers"]) if number_text(x) != text]
+    assert not different, different[:5]
+
+
+@pytest.mark.parametrize("name", list(PACKAGE_CASES))
+def test_package_is_the_same_bytes(name, web):
+    """One problem and one set of angles give the same five files and the
+    same zip archive from both ports, or the same refusal."""
+    mine, theirs = python_package(PACKAGE_CASES[name]), web["packages"][name]
+    if isinstance(mine, str):
+        assert theirs == {"error": mine}
+        return
+    files, archive = mine
+    assert [entry["name"] for entry in theirs["files"]] == list(files)
+    for entry in theirs["files"]:
+        assert entry["text"] == files[entry["name"]], entry["name"]
+    assert base64.b64decode(theirs["zip"]) == archive
+
+
+def test_some_packages_are_refused_and_most_are_not(web):
+    refused = sorted(name for name, entry in web["packages"].items() if "error" in entry)
+    assert refused == ["no-layers", "refused", "too-few-gammas", "too-many-betas", "unknown-kind"]
+    assert len(web["packages"]) == len(PACKAGE_CASES) >= 30
+
+
+def test_the_page_packages_what_it_shows(web, tmp_path):
+    """The package the page offers for the demo graph carries the refined
+    angles of the run on screen. Python, given those angles, writes the
+    same archive; and Qiskit, reading the circuit file out of it, arrives
+    at the numbers the page shows."""
+    entry = web["cases"]["preset-demo"]
+    refined, theirs = entry["scan"]["refined"], entry["scan"]["package"]
+    problem = PRESETS["demo"].build()
+    files = package_files(
+        problem, kind="maxcut", edges=len(DEMO_EDGES), recommendation=recommend(problem),
+        optimum=problem.brute_force()[1], layers=3, gammas=refined["gammas"], betas=refined["betas"],
+        angles_from=PAGE_ANGLES_FROM,
+    )
+    assert {item["name"]: item["text"] for item in theirs["files"]} == files
+    assert base64.b64decode(theirs["zip"]) == zip_bytes(files, when=PACKAGE_WHEN)
+
+    write_folder(files, tmp_path)
+    package, circuit = run_on_ibm.load_package(tmp_path)
+    ideal = run_on_ibm.ideal(package, circuit)
+    assert format(ideal["average_cost"], ".3f") == WEB_DEMO["web-refined"]
+    assert format(100 * ideal["share_at_optimum"], ".1f") + "%" == WEB_DEMO["web-success"]
+    assert ideal["average_cost"] == pytest.approx(refined["value"], abs=1e-9)
+    assert ideal["share_at_optimum"] == pytest.approx(entry["scan"]["success"], abs=1e-9)

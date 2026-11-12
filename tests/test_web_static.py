@@ -7,6 +7,10 @@ import re
 
 import pytest
 
+from package_text_js import expected as expected_package_text
+from pinned_record import PAGE_ANGLES_FROM
+from qopt_builder.simulate import SCAN_SAMPLES, SCAN_SEED
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 WEB = os.path.join(ROOT, "web")
 PAGES = sorted(name for name in os.listdir(WEB) if name.endswith(".html"))
@@ -22,7 +26,8 @@ APP_PAGES = ["demo.html", "index.html"]  # the two pages that compute; the rest 
 
 
 def test_the_site_has_its_pages():
-    assert PAGES == ["demo.html", "glossary.html", "guide.html", "index.html", "learn.html"]
+    assert PAGES == ["cli.html", "demo.html", "glossary.html", "guide.html", "hardware.html", "index.html",
+                     "learn.html"]
 
 
 @pytest.mark.parametrize("page", PAGES)
@@ -102,3 +107,28 @@ def test_guided_demo_uses_the_tested_modules():
     for call in ("Q.recommend(", "Q.exactSolver(", "Q.bruteForce(", "Q.circuitStats(", "Q.angleScan(", "Q.angleRefiner(",
                  "Q.successProbability(", "Q.topBitstrings("):
         assert call in demo, call
+
+
+def test_the_package_texts_on_the_page_are_the_python_ones():
+    """web/package-text.js is written by tests/package_text_js.py from
+    the README, the requirements and the run script on the Python side.
+    If this fails, one side was changed without the other: run
+    python tests/package_text_js.py"""
+    assert read("package-text.js") == expected_package_text()
+
+
+def test_the_page_builds_its_package_with_the_tested_module():
+    """The main page loads the package module after the ones it needs,
+    and its own script only passes the run on screen to it."""
+    scripts = re.findall(r"<script src=\"([^\"]+)\"", read("index.html"))
+    assert scripts == ["qubo.js", "qaoa.js", "circuit.js", "presets.js", "package-text.js", "package.js", "app.js"]
+    app = read("app.js")
+    assert "Q.zipBytes(Q.packageFiles(packageInput))" in app
+    assert f'anglesFrom: "{PAGE_ANGLES_FROM}"' in app
+    # the note says what the page does: this many settings, this seed, then the refinement
+    assert f"Q.scanAngles(ising, n, rec.params.p, {SCAN_SAMPLES}, {SCAN_SEED})" in app
+    assert f"the best of {SCAN_SAMPLES} random settings (seed {SCAN_SEED}), then refined" in PAGE_ANGLES_FROM
+    assert "gammas: refined.gammas, betas: refined.betas" in app
+    for own in ("crc", "DataView", "OPENQASM"):  # no archive or circuit text of its own
+        assert own not in app, own
+    assert "package.js" not in read("demo.html")  # the guided demo offers no download
