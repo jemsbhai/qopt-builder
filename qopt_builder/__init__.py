@@ -2,8 +2,7 @@
 
 Describe an optimisation problem; the builder extracts its features,
 recommends an algorithm and parameters with the rationale in view, and
-builds the Qiskit circuit. Built for the DeepStation edition of Qiskit
-Fall Fest 2026.
+builds the Qiskit circuit.
 """
 
 __version__ = "0.1.0"

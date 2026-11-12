@@ -2,13 +2,11 @@
 
 **Describe the problem; get the right circuit, with the reasoning shown.** A recommendation engine plus QAOA circuit factory for quantum optimisation, built with Qiskit. You describe the problem; the builder extracts the features the algorithm decision actually turns on (size, coupling density, hardware qubit budget), recommends an algorithm and parameters with the rationale printed next to the choice, builds the circuit, and solves the instance exactly when that is cheap, so the quantum result is scored against a certified answer. When the honest answer is "do not use a quantum computer for this instance", or the problem exceeds the qubit budget, it says so and refuses rather than silently truncating.
 
-Built by Muntaser Syed for the DeepStation edition of Qiskit Fall Fest 2026.
+Built by Muntaser Syed.
 
 ## Live demo
 
 **https://qopt-builder.vercel.app/**
-
-One-page summary (PDF): [qopt-builder-onepager.pdf](qopt-builder-onepager.pdf)
 
 Guided demo, an animated walkthrough made for watching or recording: **https://qopt-builder.vercel.app/demo.html**. It plays the pipeline on one screen: the recommendation and its reasons, the exact solve, the QAOA circuit assembled gate by gate, with each coupling in the problem flying to the RZZ gate that encodes it, and the run scored against the certified optimum. To record it, open `demo.html?controls=0`, start the screen recorder and press Space: the page waits on the title card until then, and nothing but the demo is on screen. `?autoplay=1` starts on load instead. `&preset=NAME` chooses the problem (names from `python run_demo.py --list`), `&budget=4` shows a refusal, and `&speed=0.5` or `&speed=2` changes the pace. Keys: Space pauses and resumes, Right arrow skips to the end of the current stage, R restarts, H shows or hides the controls, C shows or hides the captions.
 
@@ -84,7 +82,7 @@ The repository root carries a `vercel.json` that deploys `web/` as a static site
 
 ## Status
 
-Hackathon prototype (v0.1.0). The MaxCut path is complete end to end in both Python and the browser port. The hardware package is tested on simulators and on simulated IBM devices, and has not yet been run on a real one. On the roadmap: that run, a VQE ansatz family in the factory, a recommendation that takes the target device's coupling map and native gates into account (today the circuit is fitted to the device when the package is run), problem templates beyond MaxCut (TSP, scheduling, portfolio), and a variational optimiser in the Python demo in place of the angle scan (the browser demo already refines).
+Version 0.1.0. The MaxCut path is complete end to end in both Python and the browser port. The hardware package is tested on simulators and on simulated IBM devices, and has not yet been run on a real one. On the roadmap: that run, a VQE ansatz family in the factory, a recommendation that takes the target device's coupling map and native gates into account (today the circuit is fitted to the device when the package is run), problem templates beyond MaxCut (TSP, scheduling, portfolio), and a variational optimiser in the Python demo in place of the angle scan (the browser demo already refines).
 
 ## Layout
 
