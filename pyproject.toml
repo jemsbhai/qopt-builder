@@ -1,0 +1,92 @@
+# What `pip install qopt-builder` goes by: the name, what is installed
+# with it, and the qopt-builder command. tests/test_packaging.py keeps
+# this file in step with the code.
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "qopt-builder"
+dynamic = ["version"]  # read from qopt_builder/__init__.py, see [tool.hatch.version]
+description = "Quantum optimisation circuit builder: recommends an algorithm with its reasons, solves small QUBO and MaxCut problems exactly, and builds the QAOA circuit in Qiskit."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Muntaser Syed" }]
+keywords = [
+    "quantum computing",
+    "qiskit",
+    "qaoa",
+    "qubo",
+    "maxcut",
+    "ising",
+    "combinatorial optimisation",
+    "combinatorial optimization",
+]
+# Only what has been run: the tests pass on each Python version named
+# here, on Windows and on Linux.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Quantum Computing",
+]
+# The lowest versions the tests have run with.
+dependencies = [
+    "qiskit>=2.6",
+    "numpy>=2.0",
+]
+
+[project.optional-dependencies]
+# For --rehearse, --hardware and --job of the script in a hardware
+# package. Needs Python 3.11 or later, because qiskit-aer 0.18 does.
+ibm = [
+    "qiskit-ibm-runtime>=0.52",
+    "qiskit-aer>=0.18",
+]
+# For running the tests, from a clone or from the source archive.
+test = [
+    "pytest",
+    'tomli; python_version == "3.10"',
+]
+
+[project.urls]
+Homepage = "https://qopt-builder.vercel.app/"
+Documentation = "https://qopt-builder.vercel.app/cli.html"
+Repository = "https://github.com/jemsbhai/qopt-builder"
+Issues = "https://github.com/jemsbhai/qopt-builder/issues"
+
+[project.scripts]
+qopt-builder = "qopt_builder.cli:main"
+
+[tool.hatch.version]
+path = "qopt_builder/__init__.py"
+
+# The wheel holds the package and nothing else.
+[tool.hatch.build.targets.wheel]
+packages = ["qopt_builder"]
+
+# The source archive adds what the tests need. The paths are listed one
+# by one so that a stray file in the working folder cannot get in.
+[tool.hatch.build.targets.sdist]
+include = [
+    "/qopt_builder",
+    "/tests",
+    "/web",
+    "/examples",
+    "/run_demo.py",
+    "/requirements.txt",
+    "/vercel.json",
+]

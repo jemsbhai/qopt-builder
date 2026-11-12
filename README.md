@@ -34,7 +34,7 @@ Every number here is reproduced by `run_demo.py` and pinned by `tests/test_demo.
 
 ## Run it
 
-Python package (Qiskit, Aer, NumPy; see `requirements.txt`):
+Python package (Qiskit and NumPy; see `requirements.txt`):
 
 ```bash
 pip install -r requirements.txt

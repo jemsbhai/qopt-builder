@@ -458,7 +458,9 @@ def test_the_hardware_page_agrees_with_the_package():
 
 # ------------------------------------------------------------ wording rules
 
-READ_BY_VISITORS = [os.path.join(WEB, page) for page in PAGES] + [os.path.join(ROOT, "README.md")]
+# pyproject.toml is on the list for the summary line and the keywords that PyPI shows.
+READ_BY_VISITORS = ([os.path.join(WEB, page) for page in PAGES]
+                    + [os.path.join(ROOT, name) for name in ("README.md", "pyproject.toml")])
 NOT_USED = r"\b(robust|leverag|seamless|delv|harness|moreover|furthermore|utili[sz])"
 
 
